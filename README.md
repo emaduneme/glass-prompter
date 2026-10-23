@@ -213,6 +213,8 @@ Typefaces: [Atkinson Hyperlegible](https://www.brailleinstitute.org/freefont/) b
 
 The promo video was made with [HyperFrames](https://hyperframes.heygen.com) from captures of the real app.
 
+Music in the promo video: "Stylish Trailer Percussion" by <a href="https://pixabay.com/users/audioera-23560896/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=622881">Aleh Mikalayeu</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=622881">Pixabay</a>.
+
 ## License
 
 [MIT](LICENSE)
