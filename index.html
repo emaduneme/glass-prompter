@@ -1,0 +1,1594 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Glass Prompter</title>
+<meta name="description" content="A free teleprompter that runs in the browser, with mirror mode for teleprompter glass.">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Prompter">
+<link rel="icon" href="media/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="media/apple-touch-icon.png">
+<meta property="og:title" content="Glass Prompter">
+<meta property="og:description" content="A free teleprompter that runs in the browser, with mirror mode for teleprompter glass.">
+<meta property="og:image" content="https://emaduneme.github.io/glass-prompter/media/poster.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@500&family=Lexend:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,500&display=swap">
+<style>
+/* Layout: a rig sheet. Script page on the left, control column on the right,
+   and a full-screen black stage for the prompter itself. One device can run
+   alone, steer another (Remote control), or follow one (Display). */
+:root {
+  --bg: #EBEEF2;
+  --surface: #FFFFFF;
+  --sunken: #E1E5EA;
+  --fg: #14181D;
+  --muted: #59626E;
+  --line: #CBD1D9;
+  --accent: #9A5A00;
+  --accent-ink: #FFFFFF;
+  --ok: #1D8A4A;
+  --focus: #1F6FD1;
+  --stage-bg: #000000;
+  --stage-ui: #F2F4F6;
+  --stage-ui-muted: #9AA3AD;
+  --stage-panel: rgba(18, 21, 26, 0.86);
+  --stage-line: rgba(255, 255, 255, 0.14);
+  --stage-ok: #4ADE80;
+  --tally: #E5484D;
+
+  --font-ui: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --step-0: 0.8125rem;
+  --step-1: 0.9375rem;
+  --step-2: 1.0625rem;
+  --step-3: 1.375rem;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1115;
+    --surface: #161A20;
+    --sunken: #0A0C0F;
+    --fg: #E6EAEE;
+    --muted: #8E97A2;
+    --line: #2A3039;
+    --accent: #F0AE3C;
+    --accent-ink: #1B1205;
+    --ok: #4ADE80;
+    --focus: #6AA9FF;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1115;
+  --surface: #161A20;
+  --sunken: #0A0C0F;
+  --fg: #E6EAEE;
+  --muted: #8E97A2;
+  --line: #2A3039;
+  --accent: #F0AE3C;
+  --accent-ink: #1B1205;
+  --ok: #4ADE80;
+  --focus: #6AA9FF;
+  color-scheme: dark;
+}
+
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: var(--step-1);
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ---------- Setup ---------- */
+.setup {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-block: 16px 20px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
+}
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.tally {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--tally);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tally) 22%, transparent);
+  align-self: center;
+}
+h1 {
+  margin: 0;
+  font-size: var(--step-3);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.stats {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-num);
+  font-size: var(--step-0);
+  font-variant-numeric: tabular-nums;
+}
+
+.mode-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+@media (min-width: 860px) {
+  .mode-row { grid-template-columns: auto minmax(0, 440px) minmax(0, 1fr); align-items: center; gap: 14px; }
+}
+.mode-note { margin: 0; color: var(--muted); font-size: var(--step-0); }
+
+.sheet {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  min-height: 0;
+}
+@media (min-width: 860px) {
+  .sheet { grid-template-columns: minmax(0, 1fr) 360px; }
+}
+
+.script-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+}
+.pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.label {
+  font-size: var(--step-0);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.pane-actions { display: flex; gap: 6px; }
+.ghost {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: var(--step-0);
+  font-weight: 700;
+}
+.ghost:hover { border-color: var(--muted); }
+.ghost.armed { border-color: var(--tally); color: var(--tally); }
+
+textarea#script {
+  flex: 1;
+  min-height: 46vh;
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: var(--step-2);
+  line-height: 1.6;
+}
+@media (min-width: 860px) { textarea#script { min-height: 0; } }
+.hint { margin: 0; color: var(--muted); font-size: var(--step-0); }
+.hint kbd {
+  font-family: var(--font-num);
+  font-size: 0.75rem;
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.group {
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.group legend { padding: 0 4px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.field-name { font-weight: 700; font-size: var(--step-0); }
+.readout {
+  font-family: var(--font-num);
+  font-size: var(--step-0);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  padding: 3px;
+  gap: 3px;
+  border-radius: 9px;
+  background: var(--sunken);
+}
+.seg label { position: relative; display: block; }
+.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 6px;
+  border-radius: 7px;
+  font-size: var(--step-0);
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+}
+.seg input:checked + span { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.seg input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+.mirror-row { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 12px; align-items: center; }
+.glass {
+  aspect-ratio: 1;
+  max-width: 100%;
+  border-radius: 8px;
+  background: var(--stage-bg);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  position: relative;
+}
+.glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.16), transparent 45%);
+  pointer-events: none;
+}
+.glass span {
+  color: #FFD60A;
+  font-weight: 700;
+  font-size: 1.25rem;
+  line-height: 1.05;
+  text-align: center;
+  transition: transform .25s ease;
+}
+.mirror-note { margin: 0; color: var(--muted); font-size: var(--step-0); }
+
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-height: 28px; }
+
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.swatches label { position: relative; }
+.swatches input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.swatches span {
+  display: block;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--stage-bg);
+  border: 2px solid var(--line);
+  position: relative;
+}
+.swatches span::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: 50%;
+  background: var(--sw);
+}
+.swatches input:checked + span { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.swatches input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 3px; }
+
+.check { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: var(--step-0); cursor: pointer; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); margin: 0; }
+
+.start {
+  position: sticky;
+  bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 0 0 6px var(--bg);
+  min-height: 56px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: var(--step-2);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.start:disabled { opacity: .45; cursor: not-allowed; }
+.start svg { width: 20px; height: 20px; }
+
+/* ---------- Live panel (Remote control mode) ---------- */
+.live { display: none; }
+body.mode-controller .live { display: flex; }
+body.mode-controller #start { display: none; }
+.link-status { display: flex; align-items: flex-start; gap: 8px; font-weight: 700; font-size: var(--step-1); }
+.dot { flex: none; width: 10px; height: 10px; margin-top: .4em; border-radius: 50%; background: var(--muted); }
+.dot.wait { background: var(--accent); }
+.dot.ok { background: var(--ok); }
+.live-progress { display: flex; align-items: center; gap: 10px; }
+.meter {
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--sunken);
+  overflow: hidden;
+  cursor: pointer;
+}
+.meter i { display: block; height: 100%; width: 0; background: var(--accent); }
+.meter[aria-disabled="true"] { cursor: default; }
+.now {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--sunken);
+  min-height: 2.9em;
+  overflow-wrap: anywhere;
+}
+.now.empty { color: var(--muted); }
+.transport { display: flex; gap: 6px; }
+.tbtn {
+  flex: 1;
+  height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tbtn svg { width: 22px; height: 22px; }
+.tbtn.main { flex: 1.6; background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.tbtn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ---------- Display mode card (shown after leaving the display) ---------- */
+.display-card { display: none; max-width: 560px; }
+body.mode-display .display-card { display: flex; }
+body.mode-display .sheet { display: none; }
+.display-card h2 { margin: 0; font-size: var(--step-3); }
+.display-card p { margin: 0; color: var(--muted); }
+
+/* ---------- Stage ---------- */
+.stage {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--stage-bg);
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  color-scheme: dark;
+}
+.flip {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+}
+.column {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.text {
+  width: 80%;
+  will-change: transform;
+  font-weight: 500;
+  line-height: 1.32;
+  overflow-wrap: break-word;
+  padding-bottom: 60vh;
+}
+.text p { margin: 0 0 0.7em; }
+.text .cue { opacity: .42; font-style: italic; }
+.fade {
+  position: absolute;
+  left: 0; right: 0;
+  height: 18%;
+  pointer-events: none;
+}
+.fade.top { top: 0; background: linear-gradient(var(--stage-bg), transparent); }
+.fade.bottom { bottom: 0; background: linear-gradient(transparent, var(--stage-bg)); }
+.marker {
+  position: absolute;
+  left: 0; right: 0;
+  height: 0;
+  pointer-events: none;
+}
+.marker::before {
+  content: "";
+  position: absolute;
+  left: max(6px, env(safe-area-inset-left, 0px));
+  top: -11px;
+  border-left: 16px solid var(--tally);
+  border-top: 11px solid transparent;
+  border-bottom: 11px solid transparent;
+}
+.marker::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  top: -0.5px;
+  border-top: 1px dashed rgba(229, 72, 77, .35);
+}
+.countdown {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-num);
+  font-size: min(40vw, 40vh);
+  color: var(--stage-ui);
+  background: rgba(0,0,0,.6);
+  pointer-events: none;
+}
+.endcard {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 14px 22px;
+  border-radius: 999px;
+  background: var(--stage-panel);
+  color: var(--stage-ui);
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-size: var(--step-1);
+  pointer-events: none;
+}
+.waiting {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  z-index: 4;
+  pointer-events: none;
+}
+.waiting > div {
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  color: var(--stage-ui);
+}
+.waiting h2 { margin: 0; font-size: 1.5rem; text-wrap: balance; }
+.waiting p { margin: 0; color: var(--stage-ui-muted); }
+.waiting .dot { margin: 0; width: 14px; height: 14px; background: var(--tally); }
+.pulse { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+
+.hud {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding-top: 10px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
+  display: flex;
+  justify-content: center;
+  transition: opacity .3s ease, transform .3s ease;
+  z-index: 5;
+}
+.hud.hidden { opacity: 0; transform: translateY(12px); pointer-events: none; }
+.hud-panel {
+  width: min(100%, 860px);
+  background: var(--stage-panel);
+  border: 1px solid var(--stage-line);
+  border-radius: 18px;
+  padding: 10px 12px 12px;
+  color: var(--stage-ui);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-num);
+  font-size: var(--step-0);
+  color: var(--stage-ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+.progress { flex: 1; height: 4px; border-radius: 2px; background: var(--stage-line); overflow: hidden; }
+.progress i { display: block; height: 100%; width: 0; background: var(--stage-ui); }
+.hud-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cluster { display: flex; align-items: center; gap: 4px; }
+.hbtn {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--stage-ui);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: var(--step-0);
+}
+.hbtn:hover { background: rgba(255,255,255,.08); }
+.hbtn svg { width: 22px; height: 22px; flex: none; }
+.hbtn.play {
+  width: 60px; height: 52px;
+  background: var(--stage-ui);
+  color: #0B0D10;
+  border-radius: 14px;
+}
+.hbtn.play svg { width: 26px; height: 26px; }
+.hbtn.on { color: #FFD60A; }
+.hval {
+  min-width: 3.2em;
+  text-align: center;
+  font-family: var(--font-num);
+  font-size: var(--step-0);
+  color: var(--stage-ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+.hval b { display: block; color: var(--stage-ui); font-weight: 500; font-size: var(--step-1); }
+.link-hud {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--step-0);
+  font-weight: 700;
+  color: var(--stage-ui-muted);
+}
+.link-hud .dot { margin: 0; background: var(--stage-ui-muted); }
+.link-hud .dot.ok { background: var(--stage-ok); }
+body.mode-display .link-hud { display: inline-flex; }
+body.mode-display .solo-only { display: none; }
+@media (max-width: 560px) {
+  .hud-row { justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud, .glass span { transition: none; }
+  .pulse { animation: none; }
+}
+</style>
+</head>
+<body>
+<div id="setup" class="setup">
+  <header class="bar">
+    <div class="brand">
+      <span class="tally" aria-hidden="true"></span>
+      <h1>Glass Prompter</h1>
+    </div>
+    <p class="stats" id="stats" aria-live="polite"></p>
+  </header>
+
+  <div class="mode-row">
+    <span class="label" id="modeName">Use this device for</span>
+    <div class="seg" data-mode-seg role="radiogroup" aria-labelledby="modeName"></div>
+    <p class="mode-note" id="modeNote"></p>
+  </div>
+
+  <section class="group display-card" aria-labelledby="displayTitle">
+    <h2 id="displayTitle">Display</h2>
+    <p>This screen shows the prompter and follows the device set to Remote control. The script, mirror, text size and speed all come from that device.</p>
+    <p>Open this same page on your computer and choose <strong>Remote control</strong>. Both devices need to be signed in to claude.ai.</p>
+    <button type="button" id="openDisplay" class="start">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
+      Open display
+    </button>
+  </section>
+
+  <main class="sheet">
+    <section class="script-pane">
+      <div class="pane-head">
+        <label for="script" class="label">Script</label>
+        <div class="pane-actions">
+          <button type="button" id="openFile" class="ghost">Open .txt file</button>
+          <input type="file" id="fileInput" accept=".txt,.md,text/plain" hidden>
+          <button type="button" id="clearScript" class="ghost">Clear</button>
+        </div>
+      </div>
+      <textarea id="script" spellcheck="true" placeholder="Paste or type your script here."></textarea>
+      <p class="hint">Words in [square brackets] show dimmed on the prompter, for cues like [pause] or [show slide].</p>
+      <p class="hint">Keyboard or Bluetooth remote: <kbd>Space</kbd> play/pause, <kbd>↑</kbd> <kbd>↓</kbd> speed, <kbd>←</kbd> <kbd>→</kbd> or Page keys jump a line, <kbd>M</kbd> mirror, <kbd>Esc</kbd> exit. In Remote control mode the same keys steer the display when you're not typing.</p>
+    </section>
+
+    <aside class="controls" aria-label="Prompter settings">
+      <fieldset class="group live" id="live">
+        <legend class="label">Live</legend>
+        <div class="link-status"><span class="dot" id="linkDot"></span><span id="linkText">Connecting…</span></div>
+        <div class="live-progress">
+          <div class="meter" id="liveMeter" role="slider" tabindex="0" aria-label="Position in script" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="liveBar"></i></div>
+          <span class="readout" id="liveLeft">–</span>
+        </div>
+        <p class="now empty" id="liveLine" aria-live="polite">The line on the display's reading marker shows here.</p>
+        <div class="transport">
+          <button type="button" class="tbtn" id="tRestart" aria-label="Back to start">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg>
+          </button>
+          <button type="button" class="tbtn" id="tBack" aria-label="Back one line">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+          </button>
+          <button type="button" class="tbtn main" id="tPlay" aria-label="Play">
+            <svg id="tPlayIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>
+            <svg id="tPauseIcon" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M6 4.5h4.2v15H6zM13.8 4.5H18v15h-4.2z"/></svg>
+          </button>
+          <button type="button" class="tbtn" id="tFwd" aria-label="Forward one line">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+          </button>
+        </div>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend class="label">Glass</legend>
+        <div class="mirror-row">
+          <div class="glass" aria-hidden="true"><span id="glassText">Read<br>me</span></div>
+          <div class="field">
+            <span class="field-name" id="mirrorName">Mirror</span>
+            <p class="mirror-note" id="mirrorNote"></p>
+          </div>
+        </div>
+        <div class="seg" data-seg="mirror" role="radiogroup" aria-labelledby="mirrorName"></div>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend class="label">Type</legend>
+        <div class="field">
+          <span class="field-name" id="fontName">Typeface</span>
+          <div class="seg" data-seg="font" role="radiogroup" aria-labelledby="fontName"></div>
+        </div>
+        <div class="field">
+          <div class="field-row">
+            <label class="field-name" for="size">Text size</label>
+            <span class="readout" id="sizeOut"></span>
+          </div>
+          <input type="range" id="size" min="28" max="140" step="2">
+        </div>
+        <div class="field">
+          <span class="field-name" id="colorName">Text color</span>
+          <div class="swatches" data-swatches="color" role="radiogroup" aria-labelledby="colorName"></div>
+        </div>
+        <div class="field">
+          <span class="field-name" id="widthName">Line width</span>
+          <div class="seg" data-seg="width" role="radiogroup" aria-labelledby="widthName"></div>
+        </div>
+        <div class="field">
+          <span class="field-name" id="alignName">Alignment</span>
+          <div class="seg" data-seg="align" role="radiogroup" aria-labelledby="alignName"></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend class="label">Motion</legend>
+        <div class="field">
+          <div class="field-row">
+            <label class="field-name" for="speed">Scroll speed</label>
+            <span class="readout" id="speedOut"></span>
+          </div>
+          <input type="range" id="speed" min="1" max="15" step="0.5">
+        </div>
+        <div class="field">
+          <span class="field-name" id="lineName">Reading line</span>
+          <div class="seg" data-seg="line" role="radiogroup" aria-labelledby="lineName"></div>
+        </div>
+        <label class="check"><input type="checkbox" id="countdown"> 3-second countdown before scrolling</label>
+      </fieldset>
+
+      <button type="button" id="start" class="start">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
+        Start prompter
+      </button>
+    </aside>
+  </main>
+</div>
+
+<div id="stage" class="stage" hidden>
+  <div id="flip" class="flip">
+    <div class="column"><div id="text" class="text"></div></div>
+    <div class="fade top"></div>
+    <div class="fade bottom"></div>
+    <div id="marker" class="marker"></div>
+    <div id="endcard" class="endcard" hidden>End of script</div>
+    <div id="count" class="countdown" hidden></div>
+  </div>
+
+  <div id="waiting" class="waiting" hidden>
+    <div>
+      <span class="dot pulse" aria-hidden="true"></span>
+      <h2 id="waitTitle">Waiting for your computer</h2>
+      <p id="waitText">On the PC, open this same page and choose Remote control. The script will appear here.</p>
+    </div>
+  </div>
+
+  <div id="hud" class="hud">
+    <div class="hud-panel">
+      <div class="progress-row">
+        <span id="elapsed">0%</span>
+        <div class="progress"><i id="bar"></i></div>
+        <span id="remaining">0:00 left</span>
+      </div>
+      <div class="hud-row">
+        <div class="cluster">
+          <button type="button" class="hbtn" id="exitBtn" aria-label="Exit prompter">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+          <button type="button" class="hbtn" id="restartBtn" aria-label="Back to start">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg>
+          </button>
+        </div>
+
+        <span class="link-hud"><span class="dot" id="hudDot"></span><span id="hudLink">Remote not connected</span></span>
+
+        <div class="cluster solo-only" aria-label="Speed">
+          <button type="button" class="hbtn" id="slowerBtn" aria-label="Slower">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 12h12"/></svg>
+          </button>
+          <span class="hval"><b id="hudSpeed">5</b>speed</span>
+          <button type="button" class="hbtn" id="fasterBtn" aria-label="Faster">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 12h12M12 6v12"/></svg>
+          </button>
+        </div>
+
+        <button type="button" class="hbtn play" id="playBtn" aria-label="Play">
+          <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>
+          <svg id="pauseIcon" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M6 4.5h4.2v15H6zM13.8 4.5H18v15h-4.2z"/></svg>
+        </button>
+
+        <div class="cluster solo-only" aria-label="Text size">
+          <button type="button" class="hbtn" id="smallerBtn" aria-label="Smaller text">A<span style="font-size:.7em">−</span></button>
+          <span class="hval"><b id="hudSize">64</b>size</span>
+          <button type="button" class="hbtn" id="biggerBtn" aria-label="Larger text">A<span style="font-size:.9em">+</span></button>
+        </div>
+
+        <div class="cluster">
+          <button type="button" class="hbtn solo-only" id="mirrorBtn" aria-label="Change mirror">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M8 7L3 12l5 5"/><path d="M16 7l5 5-5 5"/></svg>
+            <span id="hudMirror">Off</span>
+          </button>
+          <button type="button" class="hbtn" id="fullBtn" aria-label="Full screen" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const STORE = "glass-prompter.v1";
+  const MODE_STORE = "glass-prompter.mode";
+  const SAMPLE = `[Sample script. Replace it with your own.]
+
+Hi, and welcome back. Today I want to walk you through three things I wish I had known before I started recording videos at home.
+
+[pause]
+
+First, light matters more than the camera. A window in front of you will do more for your picture than any new lens.
+
+Second, sound matters more than light. People will forgive a soft image, but they will click away from an echo in seconds.
+
+[smile]
+
+And third, the script is there to help you, not to trap you. Read it like you are talking to one person across the table. If you lose your place, pause, breathe, and pick it up again.
+
+[look at camera]
+
+That is it for today. If this helped, let me know what you want me to cover next.`;
+
+  // The live link between devices uses claude.ai's room service. On any other
+  // host the page runs on one device, so the two linked modes are left out.
+  const CAN_LINK = !!(window.claude && typeof window.claude.use === "function");
+  const MODES = CAN_LINK
+    ? [["solo", "On its own"], ["controller", "Remote control"], ["display", "Display"]]
+    : [["solo", "On its own"]];
+  const MODE_NOTES = {
+    solo: "Everything runs on this device. Use this on the iPad by itself.",
+    controller: "Edit and steer from here. Open this page on the iPad and choose Display.",
+    display: "This screen shows the prompter and follows the device set to Remote control.",
+  };
+  const OPTIONS = {
+    mirror: [["off", "Off"], ["horizontal", "Horizontal"], ["vertical", "Vertical"], ["both", "Both"]],
+    font: [["sans", "Sans"], ["serif", "Serif"], ["mono", "Mono"], ["readable", "Lexend"]],
+    width: [["narrow", "Narrow"], ["medium", "Medium"], ["wide", "Wide"]],
+    align: [["left", "Left"], ["center", "Center"]],
+    line: [["top", "Top"], ["upper", "Upper third"], ["center", "Middle"]],
+  };
+  const COLORS = [
+    ["white", "White", "#FFFFFF"],
+    ["yellow", "Yellow", "#FFD60A"],
+    ["green", "Green", "#5BE38B"],
+    ["cyan", "Cyan", "#62D6F7"],
+    ["pink", "Pink", "#FF7EB0"],
+  ];
+  const FONTS = {
+    sans: '"Atkinson Hyperlegible", system-ui, -apple-system, sans-serif',
+    serif: '"Source Serif 4", Georgia, "Times New Roman", serif',
+    mono: '"IBM Plex Mono", ui-monospace, Menlo, monospace',
+    readable: 'Lexend, system-ui, -apple-system, sans-serif',
+  };
+  const WIDTHS = { narrow: "62%", medium: "80%", wide: "94%" };
+  const LINES = { top: 0.22, upper: 0.34, center: 0.5 };
+  const MIRROR = {
+    off: { sx: 1, sy: 1, short: "Off", note: "Text reads normally. Use this without glass." },
+    horizontal: { sx: -1, sy: 1, short: "Flip H", note: "Flips left to right. This is the setting for standard teleprompter glass." },
+    vertical: { sx: 1, sy: -1, short: "Flip V", note: "Flips top to bottom, for rigs that mount the screen upside down." },
+    both: { sx: -1, sy: -1, short: "Flip H+V", note: "Flips both ways, for rigs that reflect the screen twice." },
+  };
+  const MIRROR_ORDER = ["off", "horizontal", "vertical", "both"];
+
+  const defaults = {
+    script: SAMPLE,
+    mirror: "horizontal",
+    font: "sans",
+    size: 64,
+    color: "white",
+    width: "medium",
+    align: "left",
+    speed: 5,
+    line: "upper",
+    countdown: true,
+  };
+
+  // `s` is this device's own script and settings. `r` is what a Display
+  // receives from the Remote control and is never saved.
+  let s = { ...defaults };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE) || "null");
+    if (saved && typeof saved === "object") s = { ...defaults, ...saved };
+  } catch (e) {}
+  const r = { ...defaults, script: "", scriptId: null };
+
+  let mode = "solo";
+  try {
+    const m = localStorage.getItem(MODE_STORE);
+    if (MODES.some(([v]) => v === m)) mode = m;
+  } catch (e) {}
+  const v = () => (mode === "display" ? r : s);
+
+  let saveTimer = 0;
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try { localStorage.setItem(STORE, JSON.stringify(s)); } catch (e) {}
+    }, 250);
+  }
+
+  const $ = (id) => document.getElementById(id);
+  const setupEl = $("setup"), stage = $("stage"), flip = $("flip"), textEl = $("text");
+  const marker = $("marker"), hud = $("hud"), countEl = $("count"), endcard = $("endcard");
+  const scriptEl = $("script");
+
+  /* ---------- Setup screen ---------- */
+  function segMarkup(name, options) {
+    return options.map(([val, label]) =>
+      `<label><input type="radio" name="${name}" id="${name}-${val}" value="${val}"><span>${label}</span></label>`
+    ).join("");
+  }
+  for (const key of Object.keys(OPTIONS)) {
+    const el = document.querySelector(`[data-seg="${key}"]`);
+    el.innerHTML = segMarkup(key, OPTIONS[key]);
+    el.addEventListener("change", (e) => update(key, e.target.value));
+  }
+  const modeSeg = document.querySelector("[data-mode-seg]");
+  modeSeg.innerHTML = segMarkup("mode", MODES);
+  modeSeg.addEventListener("change", (e) => setMode(e.target.value));
+
+  const sw = document.querySelector('[data-swatches="color"]');
+  sw.innerHTML = COLORS.map(([val, label, hex]) =>
+    `<label title="${label}"><input type="radio" name="color" id="color-${val}" value="${val}" aria-label="${label}"><span style="--sw:${hex}"></span></label>`
+  ).join("");
+  sw.addEventListener("change", (e) => update("color", e.target.value));
+
+  $("size").addEventListener("input", (e) => update("size", Number(e.target.value)));
+  $("speed").addEventListener("input", (e) => update("speed", Number(e.target.value)));
+  $("countdown").addEventListener("change", (e) => update("countdown", e.target.checked));
+  scriptEl.addEventListener("input", () => {
+    s.script = scriptEl.value;
+    save();
+    renderStats();
+    if (mode === "controller") scheduleScript(700);
+  });
+
+  function update(key, value) {
+    s[key] = value;
+    save();
+    syncControls();
+    if (mode === "controller") scheduleSettings();
+    if (!stage.hidden && mode !== "display") applyStyle(true);
+  }
+
+  function syncControls() {
+    for (const key of Object.keys(OPTIONS)) {
+      const radio = document.getElementById(`${key}-${s[key]}`);
+      if (radio) radio.checked = true;
+    }
+    const c = document.getElementById(`color-${s.color}`);
+    if (c) c.checked = true;
+    $("size").value = s.size;
+    $("sizeOut").textContent = `${s.size} pt`;
+    $("speed").value = s.speed;
+    $("speedOut").textContent = s.speed.toFixed(1);
+    $("countdown").checked = !!s.countdown;
+    const m = MIRROR[s.mirror] || MIRROR.off;
+    $("glassText").style.transform = `scale(${m.sx}, ${m.sy})`;
+    $("mirrorNote").textContent = m.note;
+    const cur = v();
+    const cm = MIRROR[cur.mirror] || MIRROR.off;
+    $("hudSpeed").textContent = cur.speed.toFixed(1);
+    $("hudSize").textContent = cur.size;
+    $("hudMirror").textContent = cm.short;
+    $("mirrorBtn").classList.toggle("on", cur.mirror !== "off");
+  }
+
+  function wordCount(text) {
+    const spoken = text.replace(/\[[^\]]*\]/g, " ");
+    const m = spoken.match(/\S+/g);
+    return m ? m.length : 0;
+  }
+  function fmt(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    const m = Math.floor(sec / 60), rest = sec % 60;
+    return `${m}:${String(rest).padStart(2, "0")}`;
+  }
+  function renderStats() {
+    const n = wordCount(s.script);
+    $("stats").textContent = mode === "display"
+      ? ""
+      : n ? `${n} words · about ${fmt(n / 150 * 60)} at 150 words a minute` : "No script yet";
+    $("start").disabled = n === 0;
+  }
+
+  $("openFile").addEventListener("click", () => $("fileInput").click());
+  $("fileInput").addEventListener("change", async (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    s.script = await f.text();
+    scriptEl.value = s.script;
+    save(); renderStats();
+    if (mode === "controller") scheduleScript(100);
+    e.target.value = "";
+  });
+
+  let clearArmed = 0;
+  $("clearScript").addEventListener("click", (e) => {
+    const b = e.currentTarget;
+    if (!clearArmed) {
+      b.classList.add("armed");
+      b.textContent = "Tap again to clear";
+      clearArmed = setTimeout(() => { clearArmed = 0; b.classList.remove("armed"); b.textContent = "Clear"; }, 3000);
+      return;
+    }
+    clearTimeout(clearArmed); clearArmed = 0;
+    b.classList.remove("armed"); b.textContent = "Clear";
+    s.script = ""; scriptEl.value = ""; save(); renderStats(); scriptEl.focus();
+    if (mode === "controller") scheduleScript(100);
+  });
+
+  function setMode(next) {
+    if (!MODES.some(([val]) => val === next)) return;
+    const was = mode;
+    mode = next;
+    try { localStorage.setItem(MODE_STORE, mode); } catch (e) {}
+    renderMode();
+    if (was !== mode && !stage.hidden) closeStage();
+    announce();
+    if (mode === "display") openStage();
+  }
+  function renderMode() {
+    document.body.classList.toggle("mode-controller", mode === "controller");
+    document.body.classList.toggle("mode-display", mode === "display");
+    const radio = document.getElementById(`mode-${mode}`);
+    if (radio) radio.checked = true;
+    $("modeNote").textContent = MODE_NOTES[mode];
+    renderStats();
+    syncControls();
+    renderLink();
+  }
+
+  /* ---------- Prompter ---------- */
+  const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  function renderScript(text) {
+    if (!text.trim()) return "";
+    return text.trim().split(/\n\s*\n/).map((para) =>
+      "<p>" + esc(para.trim())
+        .replace(/\[([^\]]*)\]/g, '<span class="cue">[$1]</span>')
+        .replace(/\n/g, "\n<br>") + "</p>"
+    ).join("");
+  }
+
+  let pos = 0, textH = 1, lineY = 0, lineH = 80;
+  let playing = false, holding = false, last = 0, raf = 0;
+  let countTimer = 0, counting = false;
+  let hideTimer = 0;
+
+  const pxPerSec = () => v().speed * v().size * 0.08;
+  const endPos = () => Math.max(0, textH - lineH);
+  const clampPos = (p) => Math.min(endPos(), Math.max(0, p));
+
+  function applyStyle(keepPlace) {
+    const cur = v();
+    const frac = textH > 1 ? pos / textH : 0;
+    textEl.style.fontFamily = FONTS[cur.font] || FONTS.sans;
+    textEl.style.fontSize = cur.size + "px";
+    textEl.style.color = (COLORS.find((c) => c[0] === cur.color) || COLORS[0])[2];
+    textEl.style.width = WIDTHS[cur.width] || WIDTHS.medium;
+    textEl.style.textAlign = cur.align;
+    const m = MIRROR[cur.mirror] || MIRROR.off;
+    flip.style.transform = `scale(${m.sx}, ${m.sy})`;
+    measure();
+    if (keepPlace) pos = clampPos(frac * textH);
+    syncControls();
+    paint();
+  }
+
+  function measure() {
+    const h = stage.clientHeight || window.innerHeight;
+    lineH = v().size * 1.32;
+    lineY = h * (LINES[v().line] || LINES.upper);
+    // The bottom padding exists only so the last line can reach the reading line.
+    const pad = parseFloat(getComputedStyle(textEl).paddingBottom) || 0;
+    textH = Math.max(1, textEl.offsetHeight - pad);
+  }
+
+  function paint() {
+    textEl.style.transform = `translate3d(0, ${lineY - lineH / 2 - pos}px, 0)`;
+    marker.style.top = lineY + "px";
+    const p = endPos() ? pos / endPos() : 0;
+    $("bar").style.width = (p * 100).toFixed(2) + "%";
+    $("elapsed").textContent = Math.round(p * 100) + "%";
+    $("remaining").textContent = fmt((endPos() - pos) / pxPerSec()) + " left";
+    endcard.hidden = !(pos >= endPos() - 0.5 && !playing && endPos() > 0);
+  }
+
+  function tick(t) {
+    if (!playing) return;
+    const dt = Math.min(0.1, (t - last) / 1000);
+    last = t;
+    if (!holding) {
+      pos += pxPerSec() * dt;
+      if (pos >= endPos()) { pos = endPos(); setPlaying(false); paint(); return; }
+    }
+    paint();
+    raf = requestAnimationFrame(tick);
+  }
+
+  function setPlaying(on) {
+    if (on && pos >= endPos() - 0.5) pos = 0;
+    playing = on;
+    // SVG elements have no `hidden` property, so set the attribute itself.
+    $("playIcon").toggleAttribute("hidden", on);
+    $("pauseIcon").toggleAttribute("hidden", !on);
+    $("playBtn").setAttribute("aria-label", on ? "Pause" : "Play");
+    cancelAnimationFrame(raf);
+    if (on) {
+      last = performance.now();
+      raf = requestAnimationFrame(tick);
+      scheduleHide();
+    } else {
+      showHud();
+    }
+    paint();
+  }
+
+  function startCountdown() {
+    counting = true;
+    let n = 3;
+    countEl.hidden = false;
+    countEl.textContent = n;
+    showHud();
+    countTimer = setInterval(() => {
+      n -= 1;
+      if (n <= 0) { stopCountdown(); setPlaying(true); }
+      else countEl.textContent = n;
+    }, 1000);
+  }
+  function stopCountdown() {
+    clearInterval(countTimer);
+    counting = false;
+    countEl.hidden = true;
+  }
+
+  function togglePlay() {
+    if (counting) { stopCountdown(); return; }
+    if (playing) { setPlaying(false); return; }
+    if (endPos() <= 0) return;
+    if (v().countdown && pos < 1) startCountdown();
+    else setPlaying(true);
+  }
+
+  function showHud() {
+    hud.classList.remove("hidden");
+    clearTimeout(hideTimer);
+    if (playing) scheduleHide();
+  }
+  function scheduleHide() {
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => { if (playing) hud.classList.add("hidden"); }, 2500);
+  }
+
+  function nudge(lines) {
+    pos = clampPos(pos + lines * lineH);
+    paint();
+  }
+  function changeSpeed(d) {
+    update("speed", Math.min(15, Math.max(1, Math.round((s.speed + d) * 2) / 2)));
+    paint();
+  }
+  function changeSize(d) {
+    update("size", Math.min(140, Math.max(28, s.size + d)));
+  }
+  function cycleMirror() {
+    const i = MIRROR_ORDER.indexOf(s.mirror);
+    update("mirror", MIRROR_ORDER[(i + 1) % MIRROR_ORDER.length]);
+  }
+
+  let wakeLock = null;
+  async function lockScreen() {
+    try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch (e) { wakeLock = null; }
+  }
+  function unlockScreen() {
+    try { wakeLock && wakeLock.release(); } catch (e) {}
+    wakeLock = null;
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && !stage.hidden) lockScreen();
+  });
+
+  function loadText(keepPlace) {
+    textEl.innerHTML = renderScript(v().script);
+    applyStyle(keepPlace);
+    renderLink();
+  }
+
+  function openStage() {
+    setupEl.hidden = true;
+    stage.hidden = false;
+    pos = 0;
+    loadText(false);
+    setPlaying(false);
+    lockScreen();
+    // Fonts can finish loading after the first measure, which changes line wraps.
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (!stage.hidden) applyStyle(true); });
+    $("playBtn").focus({ preventScroll: true });
+  }
+  function closeStage() {
+    stopCountdown();
+    setPlaying(false);
+    stage.hidden = true;
+    setupEl.hidden = false;
+    unlockScreen();
+    exitFullscreen();
+    renderLink();
+  }
+
+  const canFull = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+  $("fullBtn").hidden = !canFull;
+  function isFull() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+  function toggleFullscreen() {
+    try {
+      if (isFull()) { exitFullscreen(); return; }
+      const el = document.documentElement;
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (req) { const res = req.call(el); if (res && res.catch) res.catch(() => {}); }
+    } catch (e) {}
+  }
+  function exitFullscreen() {
+    try {
+      if (!isFull()) return;
+      const ex = document.exitFullscreen || document.webkitExitFullscreen;
+      if (ex) { const res = ex.call(document); if (res && res.catch) res.catch(() => {}); }
+    } catch (e) {}
+  }
+
+  $("start").addEventListener("click", openStage);
+  $("openDisplay").addEventListener("click", openStage);
+  $("exitBtn").addEventListener("click", closeStage);
+  $("restartBtn").addEventListener("click", () => { stopCountdown(); setPlaying(false); pos = 0; paint(); });
+  $("playBtn").addEventListener("click", togglePlay);
+  $("slowerBtn").addEventListener("click", () => changeSpeed(-0.5));
+  $("fasterBtn").addEventListener("click", () => changeSpeed(0.5));
+  $("smallerBtn").addEventListener("click", () => changeSize(-4));
+  $("biggerBtn").addEventListener("click", () => changeSize(4));
+  $("mirrorBtn").addEventListener("click", cycleMirror);
+  $("fullBtn").addEventListener("click", toggleFullscreen);
+  hud.addEventListener("pointerdown", showHud);
+
+  // Touch on the stage: a tap plays or pauses, a drag scrolls the text by hand.
+  let drag = null;
+  stage.addEventListener("pointerdown", (e) => {
+    if (e.target.closest(".hud")) return;
+    drag = { id: e.pointerId, y: e.clientY, start: pos, moved: 0 };
+    holding = true;
+    try { stage.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  stage.addEventListener("pointermove", (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dy = e.clientY - drag.y;
+    drag.moved = Math.max(drag.moved, Math.abs(dy));
+    if (drag.moved < 8) return;
+    // Under a vertical flip the text moves opposite to the screen, so the
+    // drag direction is flipped too and the words still follow the finger.
+    const sy = (MIRROR[v().mirror] || MIRROR.off).sy;
+    pos = clampPos(drag.start - dy * sy);
+    paint();
+    showHud();
+  });
+  function endDrag(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    const wasTap = drag.moved < 8 && e.type === "pointerup";
+    drag = null;
+    holding = false;
+    last = performance.now();
+    if (wasTap) togglePlay();
+  }
+  stage.addEventListener("pointerup", endDrag);
+  stage.addEventListener("pointercancel", endDrag);
+  stage.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    pos = clampPos(pos + e.deltaY);
+    paint();
+    showHud();
+  }, { passive: false });
+
+  const isTyping = (e) => {
+    const t = e.target;
+    return !!(t && t.closest && t.closest("textarea, input[type=text], input:not([type])"));
+  };
+
+  document.addEventListener("keydown", (e) => {
+    const k = e.key;
+    let handled = true;
+
+    if (stage.hidden) {
+      // Remote control: the same keys steer the display while you're not typing.
+      if (mode !== "controller" || isTyping(e) || e.target.closest && e.target.closest("button, input")) return;
+      if (k === " " || k === "MediaPlayPause") sendCmd({ op: "toggle" });
+      else if (k === "ArrowRight" || k === "PageDown") sendCmd({ op: "nudge", n: 1 });
+      else if (k === "ArrowLeft" || k === "PageUp") sendCmd({ op: "nudge", n: -1 });
+      else if (k === "ArrowUp") changeSpeed(0.5);
+      else if (k === "ArrowDown") changeSpeed(-0.5);
+      else if (k === "Home") sendCmd({ op: "restart" });
+      else handled = false;
+      if (handled) e.preventDefault();
+      return;
+    }
+
+    const solo = mode !== "display";
+    if (k === " " || k === "Enter" || k === "MediaPlayPause") {
+      if (k === "Enter" && e.target.closest && e.target.closest("button") && e.target !== $("playBtn")) handled = false;
+      else togglePlay();
+    }
+    else if (k === "ArrowRight" || k === "PageDown") nudge(1);
+    else if (k === "ArrowLeft" || k === "PageUp") nudge(-1);
+    else if (k === "Home") { pos = 0; paint(); }
+    else if (k === "Escape") closeStage();
+    else if (solo && k === "ArrowUp") changeSpeed(0.5);
+    else if (solo && k === "ArrowDown") changeSpeed(-0.5);
+    else if (solo && (k === "m" || k === "M")) cycleMirror();
+    else if (solo && (k === "+" || k === "=")) changeSize(4);
+    else if (solo && (k === "-" || k === "_")) changeSize(-4);
+    else handled = false;
+    if (handled) { e.preventDefault(); showHud(); }
+  });
+
+  let resizeRaf = 0;
+  window.addEventListener("resize", () => {
+    if (stage.hidden) return;
+    cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(() => applyStyle(true));
+  });
+
+  /* ---------- Live link between devices ----------
+     The Remote control sends absolute settings, the script (in pieces, since
+     each message holds about 4 KB) and one-off commands. The Display runs the
+     scroll clock itself and reports where it is through its presence, so the
+     Remote control can show progress and the line on the reading marker. */
+  let room = null, roomResolved = false;
+  const CHUNK = 900;
+  let settingsTimer = 0, scriptTimer = 0, sendAllTimer = 0;
+  let sendingScript = false, scriptQueued = false, lastScriptAt = 0;
+  const asm = { id: null, n: 0, parts: [], got: 0 };
+
+  const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+  function hash(str) {
+    let h = 5381;
+    for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+    return (h >>> 0).toString(36) + "-" + str.length.toString(36);
+  }
+  const linked = () => !!(room && room.connected());
+  const others = () => (room ? room.peers().filter((p) => !p.sameTab) : []);
+  const displays = () => others().filter((p) => p.presence && p.presence.role === "display");
+  const controllers = () => others().filter((p) => p.presence && p.presence.role === "controller");
+
+  function settingsPayload() {
+    const { script, ...rest } = s;
+    return rest;
+  }
+  function emit(topic, data) {
+    if (!linked()) return Promise.resolve();
+    return room.emit(topic, data).catch(() => {});
+  }
+  function scheduleSettings() {
+    clearTimeout(settingsTimer);
+    settingsTimer = setTimeout(() => emit("settings", settingsPayload()), 80);
+  }
+  function scheduleScript(ms) {
+    clearTimeout(scriptTimer);
+    scriptTimer = setTimeout(sendScript, ms);
+  }
+  function scheduleSendAll(ms) {
+    clearTimeout(sendAllTimer);
+    sendAllTimer = setTimeout(() => {
+      if (mode !== "controller") return;
+      emit("settings", settingsPayload());
+      sendScript();
+    }, ms);
+  }
+  async function sendScript() {
+    if (mode !== "controller" || !linked()) return;
+    if (sendingScript) { scriptQueued = true; return; }
+    sendingScript = true;
+    const text = s.script;
+    const id = hash(text);
+    const parts = [];
+    for (let i = 0; i < text.length; i += CHUNK) parts.push(text.slice(i, i + CHUNK));
+    if (!parts.length) parts.push("");
+    for (let i = 0; i < parts.length; i++) {
+      await emit("script", { id, i, n: parts.length, t: parts[i] });
+      if (parts.length > 1) await sleep(70);
+    }
+    lastScriptAt = Date.now();
+    sendingScript = false;
+    if (scriptQueued) { scriptQueued = false; sendScript(); }
+  }
+  function sendCmd(cmd) {
+    emit("cmd", cmd);
+  }
+
+  // Display side: everything that arrives is checked before it is used.
+  function cleanSettings(d) {
+    const out = {};
+    if (!d || typeof d !== "object") return out;
+    for (const k of Object.keys(OPTIONS)) if (OPTIONS[k].some((o) => o[0] === d[k])) out[k] = d[k];
+    if (COLORS.some((c) => c[0] === d.color)) out.color = d.color;
+    if (typeof d.size === "number" && d.size >= 28 && d.size <= 140) out.size = d.size;
+    if (typeof d.speed === "number" && d.speed >= 1 && d.speed <= 15) out.speed = d.speed;
+    if (typeof d.countdown === "boolean") out.countdown = d.countdown;
+    return out;
+  }
+  function onSettings(d) {
+    Object.assign(r, cleanSettings(d));
+    if (!stage.hidden) applyStyle(true);
+  }
+  function onScriptChunk(d) {
+    if (!d || typeof d.id !== "string" || d.id.length > 40 || typeof d.t !== "string") return;
+    if (!Number.isInteger(d.n) || !Number.isInteger(d.i) || d.n < 1 || d.n > 400 || d.i < 0 || d.i >= d.n) return;
+    if (d.id === r.scriptId) return;
+    if (asm.id !== d.id || asm.n !== d.n) { asm.id = d.id; asm.n = d.n; asm.parts = new Array(d.n); asm.got = 0; }
+    if (asm.parts[d.i] === undefined) { asm.parts[d.i] = d.t; asm.got += 1; }
+    if (asm.got === asm.n) {
+      r.script = asm.parts.join("");
+      r.scriptId = asm.id;
+      asm.id = null;
+      if (!stage.hidden) loadText(true);
+    }
+  }
+  function onCmd(d) {
+    if (!d || typeof d.op !== "string" || stage.hidden) return;
+    if (d.op === "toggle") togglePlay();
+    else if (d.op === "restart") { stopCountdown(); setPlaying(false); pos = 0; paint(); }
+    else if (d.op === "nudge" && Number.isFinite(d.n)) nudge(Math.max(-20, Math.min(20, d.n)));
+    else if (d.op === "seek" && Number.isFinite(d.p)) { pos = clampPos(Math.max(0, Math.min(1, d.p)) * endPos()); paint(); }
+    showHud();
+  }
+
+  // The words sitting on the reading marker, for the Remote control's panel.
+  function currentLine() {
+    const y = pos + lineH / 2;
+    for (const p of textEl.children) {
+      const top = p.offsetTop, h = p.offsetHeight;
+      if (y < top + h) {
+        const txt = p.textContent.replace(/\s+/g, " ");
+        if (y < top || h <= 0) return txt.slice(0, 90);
+        const i = Math.floor(((y - top) / h) * txt.length);
+        const start = txt.lastIndexOf(" ", Math.max(0, i - 20)) + 1;
+        return txt.slice(start, start + 90);
+      }
+    }
+    return "";
+  }
+
+  let lastPresence = "";
+  function reportPresence() {
+    if (!linked()) return;
+    let patch = { role: mode };
+    if (mode === "display") {
+      const open = !stage.hidden;
+      patch = {
+        role: "display",
+        open,
+        ready: !!r.script,
+        sid: r.scriptId,
+        p: open && endPos() ? Math.round((pos / endPos()) * 1000) / 1000 : 0,
+        playing: playing || counting,
+        left: open ? Math.round((endPos() - pos) / pxPerSec()) : 0,
+        line: open ? currentLine() : "",
+      };
+    }
+    const json = JSON.stringify(patch);
+    if (json === lastPresence) return;
+    lastPresence = json;
+    room.presence(patch).catch(() => {});
+  }
+
+  function announce() {
+    lastPresence = "";
+    reportPresence();
+    if (!linked()) return;
+    if (mode === "display" && !r.script) emit("need", { have: r.scriptId });
+    if (mode === "controller") scheduleSendAll(200);
+  }
+
+  function renderLink() {
+    // Remote control panel
+    if (mode === "controller") {
+      const dot = $("linkDot"), txt = $("linkText");
+      const ds = displays();
+      let state = "wait", label = "Connecting…";
+      if (roomResolved && !room) { state = ""; label = "The live link isn't available here. Open this page on claude.ai while signed in."; }
+      else if (linked() && !ds.length) { state = "wait"; label = "No display yet. On the iPad, open this page and choose Display."; }
+      else if (linked()) {
+        state = "ok";
+        const open = ds.filter((d) => d.presence.open);
+        label = ds.length > 1 ? `${ds.length} displays connected` : "iPad display connected";
+        if (!open.length) label += ", prompter closed";
+      }
+      dot.className = "dot " + state;
+      txt.textContent = label;
+      const d = ds.find((x) => x.presence.open) || ds[0];
+      const ready = !!(d && d.presence.open && d.presence.ready);
+      for (const id of ["tRestart", "tBack", "tPlay", "tFwd"]) $(id).disabled = !ready;
+      $("liveMeter").setAttribute("aria-disabled", ready ? "false" : "true");
+      const p = d && typeof d.presence.p === "number" ? Math.max(0, Math.min(1, d.presence.p)) : 0;
+      $("liveBar").style.width = (p * 100).toFixed(1) + "%";
+      $("liveMeter").setAttribute("aria-valuenow", String(Math.round(p * 100)));
+      $("liveLeft").textContent = d && typeof d.presence.left === "number" ? `${fmt(d.presence.left)} left` : "–";
+      const on = !!(d && d.presence.playing);
+      $("tPlayIcon").toggleAttribute("hidden", on);
+      $("tPauseIcon").toggleAttribute("hidden", !on);
+      $("tPlay").setAttribute("aria-label", on ? "Pause" : "Play");
+      const line = $("liveLine");
+      let lineText = "The line on the display's reading marker shows here.";
+      if (d && d.presence.open && !d.presence.ready) lineText = "Sending the script…";
+      else if (d && d.presence.open && typeof d.presence.line === "string" && d.presence.line) lineText = d.presence.line;
+      else if (d && !d.presence.open) lineText = "On the iPad, tap Open display.";
+      line.textContent = lineText;
+      line.classList.toggle("empty", !(d && d.presence.line));
+    }
+
+    // Display stage
+    if (mode === "display") {
+      const hasRemote = controllers().length > 0;
+      $("hudDot").className = "dot" + (hasRemote ? " ok" : "");
+      $("hudLink").textContent = hasRemote ? "Linked to remote control" : "Remote control not connected";
+      const waiting = $("waiting");
+      waiting.hidden = stage.hidden || !!r.script;
+      if (!waiting.hidden) {
+        if (roomResolved && !room) {
+          $("waitTitle").textContent = "The live link isn't available here";
+          $("waitText").textContent = "Open this page on claude.ai while signed in, or switch this device to On its own.";
+        } else if (!linked()) {
+          $("waitTitle").textContent = "Connecting…";
+          $("waitText").textContent = "Looking for your remote control.";
+        } else {
+          $("waitTitle").textContent = "Waiting for your computer";
+          $("waitText").textContent = "On the PC, open this same page and choose Remote control. The script will appear here.";
+        }
+      }
+    }
+  }
+
+  $("tPlay").addEventListener("click", () => sendCmd({ op: "toggle" }));
+  $("tRestart").addEventListener("click", () => sendCmd({ op: "restart" }));
+  $("tBack").addEventListener("click", () => sendCmd({ op: "nudge", n: -1 }));
+  $("tFwd").addEventListener("click", () => sendCmd({ op: "nudge", n: 1 }));
+  $("liveMeter").addEventListener("click", (e) => {
+    if ($("liveMeter").getAttribute("aria-disabled") === "true") return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    sendCmd({ op: "seek", p: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) });
+  });
+
+  setInterval(() => {
+    if (mode === "display") reportPresence();
+  }, 250);
+  setInterval(() => {
+    if (!linked()) return;
+    if (mode === "display" && !r.script) emit("need", { have: r.scriptId });
+    if (mode === "controller") {
+      // Messages can drop, so resend settings now and then, and resend the
+      // script when a display reports a different one.
+      emit("settings", settingsPayload());
+      const id = hash(s.script);
+      const stale = displays().some((d) => d.presence.sid !== id);
+      if (stale && !sendingScript && Date.now() - lastScriptAt > 3000) sendScript();
+    }
+  }, 4000);
+
+  const onRoomError = () => renderLink();
+  const roomPromise = window.claude && typeof window.claude.use === "function"
+    ? window.claude.use("room").catch(() => null)
+    : Promise.resolve(null);
+  roomPromise.then((rm) => {
+    room = rm;
+    roomResolved = true;
+    if (!rm) { renderLink(); return; }
+    rm.onConnection((c) => { if (c) announce(); renderLink(); }, onRoomError);
+    rm.onPeers((change) => {
+      if (mode === "controller" && change.joined.some((p) => !p.sameTab)) scheduleSendAll(400);
+      renderLink();
+    }, onRoomError);
+    rm.on("need", (m) => { if (!m.sameTab && mode === "controller") scheduleSendAll(150); }, onRoomError);
+    rm.on("settings", (m) => { if (!m.sameTab && mode === "display") onSettings(m.data); }, onRoomError);
+    rm.on("script", (m) => { if (!m.sameTab && mode === "display") onScriptChunk(m.data); }, onRoomError);
+    rm.on("cmd", (m) => { if (!m.sameTab && mode === "display") onCmd(m.data); }, onRoomError);
+  });
+
+  scriptEl.value = s.script;
+  document.querySelector(".mode-row").hidden = !CAN_LINK;
+  renderMode();
+  if (mode === "display") openStage();
+})();
+</script>
+</body>
+</html>

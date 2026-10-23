@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Glass Prompter linked-mode test</title>
+</head>
+<body>
+<script>
+// Loads ../index.html with the mock room in front of it, so the Remote control
+// and Display modes appear. Open two tabs: ?mode=controller and ?mode=display.
+(async () => {
+  const [app, mock] = await Promise.all([
+    fetch("../index.html").then((r) => r.text()),
+    fetch("mock-room.js").then((r) => r.text()),
+  ]);
+  const page = app.replace("<head>", `<head>\n<base href="../">\n<script>${mock}<\/script>`);
+  document.open();
+  document.write(page);
+  document.close();
+})();
+</script>
+</body>
+</html>
