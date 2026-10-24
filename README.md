@@ -13,13 +13,13 @@
 </p>
 
 <p align="center">
-  <a href="https://emaduneme.github.io/glass-prompter/"><strong>Open Glass Prompter</strong></a> · <a href="#features">Features</a> · <a href="#how-it-works">How it works</a> · <a href="#set-it-up-on-an-ipad">iPad setup</a> · <a href="#host-it-yourself">Host it yourself</a> · <a href="#privacy">Privacy</a>
+  <a href="https://emaduneme.github.io/glass-prompter/"><strong>Open Glass Prompter</strong></a> · <a href="https://youtu.be/XNnG8vcI7o4">Video</a> · <a href="#features">Features</a> · <a href="#how-it-works">How it works</a> · <a href="#set-it-up-on-an-ipad">iPad setup</a> · <a href="#host-it-yourself">Host it yourself</a> · <a href="#privacy">Privacy</a>
 </p>
 
 <p align="center">
-  <a href="media/promo.mp4"><img src="media/promo.gif" width="720" alt="Glass Prompter demo: a script scrolls on an iPad, flips for teleprompter glass, and the setup screen sets speed and size"></a>
+  <a href="https://youtu.be/XNnG8vcI7o4"><img src="media/promo.gif" width="720" alt="Glass Prompter demo: a script scrolls on an iPad, flips for teleprompter glass, and the setup screen sets speed and size"></a>
   <br>
-  <sub><a href="media/promo.mp4">Watch the 43-second video with sound (MP4)</a></sub>
+  <sub><a href="https://youtu.be/XNnG8vcI7o4"><strong>Watch the 43-second video on YouTube</strong></a> · <a href="media/promo.mp4">Download the MP4</a></sub>
 </p>
 
 ---
