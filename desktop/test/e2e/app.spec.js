@@ -164,14 +164,17 @@ test('remote buttons pause, move by line, change speed, and work as a gamepad', 
   await main(() => global.glassPrompter.settings.set({ listeningMode: 'classic', scrollSpeed: 3 }));
   await main(() => global.glassPrompter.startReading(0));
   const view = await overlay();
-  const state = () => main(() => ({ paused: global.glassPrompter.session.paused, charCount: global.glassPrompter.session.charCount, speed: global.glassPrompter.settings.get('scrollSpeed') }));
+  const state = () => main(() => ({ paused: global.glassPrompter.session.paused, charCount: global.glassPrompter.session.charCount, words: global.glassPrompter.session.wordProgress, speed: global.glassPrompter.settings.get('scrollSpeed') }));
 
   // Music mode: media keys arrive as remote commands.
   await main(() => global.glassPrompter.remoteCommand('toggle'));
   expect((await state()).paused).toBe(true);
-  const before = (await state()).charCount;
+  // A line holds as many words as the fonts and the just-opened window allow
+  // (two on the CI runner), so check for a step of at least one word.
+  const before = await state();
   await main(() => global.glassPrompter.remoteCommand('forward'));
-  await expect.poll(async () => (await state()).charCount).toBeGreaterThan(before + 10);
+  await expect.poll(async () => (await state()).words).toBeGreaterThanOrEqual(before.words + 1);
+  expect((await state()).charCount).toBeGreaterThan(before.charCount);
   await main(() => global.glassPrompter.remoteCommand('faster'));
   expect((await state()).speed).toBe(3.5);
 
