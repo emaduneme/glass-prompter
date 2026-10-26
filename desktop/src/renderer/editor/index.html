@@ -14,63 +14,107 @@
       <span class="tally" aria-hidden="true"></span>
       <h1>Glass Prompter</h1>
       <span id="file-name" class="file-name"></span>
+      <span id="dirty" class="dirty" title="Unsaved changes" hidden><span class="sr-only">Unsaved changes</span></span>
     </div>
-    <p id="stats" class="stats" aria-live="polite"></p>
+    <p id="stats" class="stats"></p>
     <div class="bar-actions">
-      <button id="btn-new" class="ghost" type="button" title="New (Ctrl+N)">New</button>
-      <button id="btn-open" class="ghost" type="button" title="Open a script, .txt, .md or .pptx (Ctrl+O)">Open</button>
-      <button id="btn-save" class="ghost" type="button" title="Save (Ctrl+S)">Save</button>
+      <button id="btn-new" class="ghost" type="button" title="New (Ctrl+N)" aria-keyshortcuts="Control+N">New</button>
+      <button id="btn-open" class="ghost" type="button" title="Open a script, .txt, .md or .pptx (Ctrl+O)" aria-keyshortcuts="Control+O">Open</button>
+      <button id="btn-save" class="ghost" type="button" title="Save (Ctrl+S)" aria-keyshortcuts="Control+S">Save</button>
+      <button id="btn-keys" class="ghost icon" type="button" title="Shortcuts (F1)" aria-label="Shortcuts" aria-haspopup="dialog" aria-keyshortcuts="F1">?</button>
     </div>
   </header>
 
-  <div id="banner" class="banner" role="status" hidden>
+  <div id="sr-status" class="sr-only" role="status"></div>
+
+  <div id="banner" class="banner" hidden>
     <span id="banner-text"></span>
     <span class="banner-actions">
-      <button id="banner-primary" class="small accent" type="button"></button>
+      <button id="banner-primary" class="small primary" type="button"></button>
       <button id="banner-secondary" class="small" type="button"></button>
       <button id="banner-close" class="small icon" type="button" aria-label="Dismiss">×</button>
     </span>
   </div>
 
   <main class="sheet">
-    <nav class="pages" aria-label="Pages">
-      <div class="label">Pages</div>
+    <nav class="pages" aria-labelledby="pages-label">
+      <div class="col-head"><h2 id="pages-label" class="label">Pages</h2></div>
       <ol id="page-list" class="page-list"></ol>
       <button id="add-page" class="ghost add-page" type="button">+ Page</button>
     </nav>
 
-    <section class="script-pane">
-      <div class="pane-head">
+    <section class="script-pane" aria-labelledby="script-label">
+      <div class="col-head">
         <label for="script" class="label" id="script-label">Script</label>
-        <span class="hint">Words in [square brackets] show dimmed, for cues like [pause] or [smile].</span>
+        <button id="script-info" class="info" type="button" aria-label="About the script" aria-expanded="false" aria-controls="script-tip">i</button>
       </div>
+      <p id="script-tip" class="tip" hidden>Put cues in [square brackets], like [pause] or [smile]. They show dimmed. Drop a .txt, .md or .pptx file here to open it.</p>
       <div id="drop" class="drop">
-        <textarea id="script" spellcheck="true" placeholder="Paste or type your script here. Drop a .pptx to import presenter notes."></textarea>
-        <div id="drop-hint" class="drop-hint" hidden>Drop a script, .txt, .md or .pptx file</div>
+        <textarea id="script" spellcheck="true" placeholder="Type or paste your script"></textarea>
+        <div id="drop-hint" class="drop-hint" hidden>Drop to open</div>
         <div id="director-cover" class="director-cover" hidden>
           <h2>Director Mode is on</h2>
-          <p>Someone else writes and starts the script from their browser. Scan the code or open the link on the same network.</p>
           <img id="director-qr" alt="QR code for the director page">
           <code id="director-url"></code>
-          <button id="director-off" class="small" type="button">Turn off Director Mode</button>
+          <button id="director-off" class="small" type="button">Turn off</button>
         </div>
       </div>
       <div class="start-row">
-        <button id="btn-start" class="start" type="button" title="Start reading this page (Ctrl+Enter)">
+        <button id="btn-start" class="start" type="button" title="Start reading this page (Ctrl+Enter)" aria-keyshortcuts="Control+Enter">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
           <span id="start-label">Start reading</span>
         </button>
-        <button id="btn-all" class="ghost tall" type="button" title="Read every page from the first (Ctrl+Shift+Enter)">Read all pages</button>
+        <button id="btn-all" class="ghost tall" type="button" title="Read every page from the first (Ctrl+Shift+Enter)" aria-keyshortcuts="Control+Shift+Enter">Read all</button>
       </div>
-      <p class="hint keys">While reading: <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> pause or mute, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd> stop, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd> change page. Click a word to jump to it.</p>
     </section>
 
     <aside class="controls" aria-label="Settings">
-      <div class="tabs" role="tablist" id="tabs"></div>
-      <div id="panels" class="panels"></div>
+      <div class="col-head"><div class="tabs" role="tablist" aria-label="Settings" id="tabs"></div></div>
+      <div id="panels" class="panels" role="tabpanel"></div>
     </aside>
   </main>
 </div>
+
+<dialog id="shortcuts" class="sheet-dialog" aria-labelledby="shortcuts-title">
+  <div class="dialog-head">
+    <h2 id="shortcuts-title">Shortcuts</h2>
+    <button id="shortcuts-close" class="small icon" type="button" aria-label="Close">×</button>
+  </div>
+  <div class="dialog-body">
+    <section aria-labelledby="keys-editor">
+      <h3 id="keys-editor">Editor</h3>
+      <table class="keys">
+        <tr><th scope="row">Start or stop this page</th><td><kbd class="mod">Ctrl</kbd> <kbd>Enter</kbd></td></tr>
+        <tr><th scope="row">Read all pages</th><td><kbd class="mod">Ctrl</kbd> <kbd>Shift</kbd> <kbd>Enter</kbd></td></tr>
+        <tr><th scope="row">New, Open, Save</th><td><kbd class="mod">Ctrl</kbd> <kbd>N</kbd> <kbd>O</kbd> <kbd>S</kbd></td></tr>
+        <tr><th scope="row">Shortcuts</th><td><kbd>F1</kbd></td></tr>
+      </table>
+    </section>
+    <section aria-labelledby="keys-reading">
+      <h3 id="keys-reading">While reading</h3>
+      <table class="keys">
+        <tr><th scope="row">Pause or mute</th><td><kbd class="mod">Ctrl</kbd> <kbd>Shift</kbd> <kbd>Space</kbd></td></tr>
+        <tr><th scope="row">Stop</th><td><kbd class="mod">Ctrl</kbd> <kbd>Shift</kbd> <kbd>.</kbd></td></tr>
+        <tr><th scope="row">Previous or next page</th><td><kbd class="mod">Ctrl</kbd> <kbd>Shift</kbd> <kbd>←</kbd> <kbd>→</kbd></td></tr>
+        <tr><th scope="row">Jump to a word</th><td>Click the word</td></tr>
+      </table>
+    </section>
+    <section id="keys-remote" aria-labelledby="keys-remote-title">
+      <h3 id="keys-remote-title">Remote</h3>
+      <p class="tip">Pair the remote with this computer first. Then turn it on in Read.</p>
+      <table class="keys">
+        <thead><tr><td></td><th scope="col">Music mode</th><th scope="col">Game mode</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Pause</th><td>Play/pause</td><td>A or Start</td></tr>
+          <tr><th scope="row">Move a line</th><td>Next or previous track</td><td>Stick or D-pad left and right. B goes back.</td></tr>
+          <tr><th scope="row">Speed</th><td>Volume up and down</td><td>Stick or D-pad up and down</td></tr>
+          <tr><th scope="row">Change page</th><td>Not available</td><td>X and Y</td></tr>
+        </tbody>
+      </table>
+      <p class="tip">Speed works in Classic and Voice-Activated only.</p>
+    </section>
+  </div>
+</dialog>
 <script src="editor.js"></script>
 </body>
 </html>

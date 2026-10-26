@@ -2,6 +2,8 @@
 
 Saved 2026-10-26 for the next session. Branch: `claude/desktop-app`.
 
+**Status: done on 2026-10-26.** The editor now has four tabs (Read, Look, Screens, Share), info buttons, a Shortcuts sheet (F1), and accessibility tests (`test/e2e/a11y.spec.js`, `test/unit/contrast.test.js`). The "Other open items" at the end are still open.
+
 ## The ask (from Emmanuel)
 
 > The Windows app has a lot of text. Remove all of that text. Design it using the Gestalt principles of psychology, and use design principles to clean up the text and make it easy to navigate, including WCAG accessibility.

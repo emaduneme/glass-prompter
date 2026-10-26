@@ -88,14 +88,14 @@ test.afterEach(async () => {
 test('editor opens with the welcome script and stats', async () => {
   await expect(editor.locator('h1')).toHaveText('Glass Prompter');
   await expect(editor.locator('#stats')).toContainText('words');
-  await expect(editor.locator('#tabs button')).toHaveCount(5);
+  await expect(editor.locator('#tabs [role=tab]')).toHaveText(['Read', 'Look', 'Screens', 'Share']);
   await editor.screenshot({ path: path.join(SHOTS, 'editor.png') });
-  for (const tab of ['Overlay', 'Type', 'Displays', 'Remote']) {
-    await editor.locator('#tabs button', { hasText: tab }).click();
-    await expect(editor.locator('#panels .group').first()).toBeVisible();
+  for (const tab of ['Look', 'Screens', 'Share', 'Read']) {
+    await editor.locator('#tabs [role=tab]', { hasText: tab }).click();
+    await expect(editor.locator('#panels .card').first()).toBeVisible();
   }
-  await editor.locator('#tabs button', { hasText: 'Type' }).click();
-  await editor.screenshot({ path: path.join(SHOTS, 'editor-type-tab.png') });
+  await editor.locator('#tabs [role=tab]', { hasText: 'Look' }).click();
+  await editor.screenshot({ path: path.join(SHOTS, 'editor-look-tab.png') });
 });
 
 test('word tracking without a model offers a download or Classic', async () => {
@@ -214,9 +214,9 @@ test('remote connection serves the viewer and streams state', async () => {
   expect(state.words[0]).toBe('Welcome');
   expect(state.highlightWords).toBe(false);
   ws.close();
-  await editor.locator('#tabs button', { hasText: 'Remote' }).click();
+  await editor.locator('#tabs [role=tab]', { hasText: 'Share' }).click();
   await expect(editor.locator('.qr img').first()).toBeVisible();
-  await editor.screenshot({ path: path.join(SHOTS, 'editor-remote-tab.png') });
+  await editor.screenshot({ path: path.join(SHOTS, 'editor-share-tab.png') });
 
   // The real remote page renders the live prompter.
   await main(({ BrowserWindow }) => {

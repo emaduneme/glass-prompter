@@ -12,7 +12,7 @@ Get the newest installer from the **[Glass Prompter Desktop (preview) release](h
 
 | Feature | How it works |
 |---|---|
-| Word Tracking | Offline speech recognition with [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx), plus Textream's two-strategy word matcher, ported line by line from its `SpeechRecognizer.swift`. You download the model once from Settings → Guidance. |
+| Word Tracking | Offline speech recognition with [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx), plus Textream's two-strategy word matcher, ported line by line from its `SpeechRecognizer.swift`. You download the model once from Settings → Read. |
 | Classic, Voice-Activated | Textream's speeds (0.5–8 words/s) and voice detector thresholds. |
 | Pinned to top | A Dynamic Island–style bar at the top centre of the screen, under the webcam. Follow mouse or fixed display. |
 | Floating Window | Always on top, draggable, resizable. Glass effect uses Acrylic on Windows 11 and vibrancy on macOS. Follow-cursor mode. |
@@ -51,7 +51,7 @@ On macOS, Ctrl is Cmd.
 
 ## Bluetooth remotes
 
-Small Bluetooth remotes work as a hands-free controller. That includes the mini "VR" game remotes with a joystick, START and four buttons, presentation clickers, and keyboard media keys. Pair the remote with your computer in Bluetooth settings first. Turn this on or off in Settings → Guidance → **Bluetooth remote and media keys**. It is on by default.
+Small Bluetooth remotes work as a hands-free controller. That includes the mini "VR" game remotes with a joystick, START and four buttons, presentation clickers, and keyboard media keys. Pair the remote with your computer in Bluetooth settings first. Turn this on or off in Settings → Read → **Remote and media keys**. It is on by default. Press F1 or the ? button to see the button map.
 
 | Remote mode | Button | Action |
 |---|---|---|
