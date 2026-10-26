@@ -118,7 +118,8 @@ test('classic mode scrolls on its own and pauses', async () => {
   const paused = (await session()).charCount;
   await new Promise((r) => setTimeout(r, 600));
   expect((await session()).charCount).toBe(paused);
-  await view.locator('#stop').click();
+  // Stop closes the window mid-click, so the click may report a closed target.
+  await view.locator('#stop').click().catch(() => {});
   await expect.poll(async () => (await session()).active).toBe(false);
 });
 
