@@ -1,0 +1,96 @@
+{
+  "name": "glass-prompter-desktop",
+  "productName": "Glass Prompter",
+  "version": "0.1.0",
+  "description": "Glass Prompter desktop teleprompter for Windows, macOS, and Linux. Built on Electron from Textream.",
+  "main": "src/main/main.js",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/unit/*.test.js",
+    "test:e2e": "playwright test --config test/e2e/playwright.config.js",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
+  },
+  "dependencies": {
+    "jszip": "3.10.1",
+    "qrcode": "1.5.4",
+    "sherpa-onnx-node": "1.13.8",
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
+    "electron": "44.9.3",
+    "electron-builder": "26.16.1"
+  },
+  "build": {
+    "appId": "dev.glassprompter.desktop",
+    "productName": "Glass Prompter",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json",
+      "LICENSE-textream.txt"
+    ],
+    "asarUnpack": [
+      "node_modules/sherpa-onnx-*/**"
+    ],
+    "fileAssociations": [
+      {
+        "ext": "glassprompter",
+        "name": "Glass Prompter Script",
+        "role": "Editor"
+      },
+      {
+        "ext": "textream",
+        "name": "Textream Script",
+        "role": "Editor"
+      }
+    ],
+    "protocols": [
+      {
+        "name": "Glass Prompter",
+        "schemes": [
+          "glassprompter"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.png",
+      "artifactName": "GlassPrompter-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "assets/icon.png",
+      "category": "public.app-category.productivity",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Glass Prompter listens to your voice to follow your script while you read."
+      },
+      "artifactName": "GlassPrompter-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "assets/icon.png",
+      "category": "Utility",
+      "artifactName": "GlassPrompter-${version}-${arch}.${ext}"
+    }
+  }
+}

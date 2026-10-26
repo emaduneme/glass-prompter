@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://emaduneme.github.io/glass-prompter/"><strong>Open Glass Prompter</strong></a> · <a href="https://youtu.be/XNnG8vcI7o4">Video</a> · <a href="#features">Features</a> · <a href="#how-it-works">How it works</a> · <a href="#set-it-up-on-an-ipad">iPad setup</a> · <a href="#host-it-yourself">Host it yourself</a> · <a href="#privacy">Privacy</a>
+  <a href="https://emaduneme.github.io/glass-prompter/"><strong>Open Glass Prompter</strong></a> · <a href="#desktop-app-windows-mac-linux">Desktop app</a> · <a href="https://youtu.be/XNnG8vcI7o4">Video</a> · <a href="#features">Features</a> · <a href="#how-it-works">How it works</a> · <a href="#set-it-up-on-an-ipad">iPad setup</a> · <a href="#host-it-yourself">Host it yourself</a> · <a href="#privacy">Privacy</a>
 </p>
 
 <p align="center">
@@ -31,6 +31,21 @@ Glass Prompter is a single web page. Paste your script, pick how the text should
 Teleprompter glass reflects the screen, and a reflection reads backwards. Glass Prompter flips the text so the reflection reads the right way round. It flips left to right for standard glass, top to bottom for rigs that mount the screen upside down, or both.
 
 There's nothing to install and no account. The page is one HTML file with no build step. It keeps your script in your own browser.
+
+## Desktop app (Windows, Mac, Linux)
+
+**[Download Glass Prompter Desktop](https://github.com/emaduneme/glass-prompter/releases/tag/desktop-latest)** (preview). Choose `GlassPrompter-Setup-….exe` for Windows, the `.dmg` for an Apple silicon Mac, or the `.AppImage` for Linux.
+
+The desktop app does what a web page can't:
+
+- **Stays on top of your other apps,** as a bar under your webcam, a floating window, or fullscreen.
+- **Follows your voice.** Word Tracking highlights each word as you say it, offline on your computer. Classic and Voice-Activated scrolling work too.
+- **Drives a second display** with a normal or mirrored prompter for teleprompter glass.
+- **Sends the prompter to your iPad or phone** over Wi-Fi. Scan a QR code; no app needed.
+- **Works with Bluetooth remotes,** including small game-style remotes and presentation clickers.
+- **Hides from screen sharing** in Zoom, Teams and OBS.
+
+The builds are unsigned, so Windows SmartScreen warns you the first time: choose **More info**, then **Run anyway**. See [`desktop/README.md`](desktop/README.md) for every feature, the keyboard and remote controls, and how to build it.
 
 ## Features
 
@@ -151,27 +166,11 @@ The control bar hides itself while the text is moving and comes back when you ta
 
 Your script and settings are saved on the iPad, so they're still there next time.
 
-## Remote control (claude.ai version)
+## Remote control
 
-There's a second version of Glass Prompter that runs as a Claude artifact on claude.ai. That version adds two modes on top of **On its own**:
+To steer the prompter from your computer while an iPad shows it, use the **desktop app**. Turn on **Remote** in its settings and scan the QR code on the iPad. The iPad shows the live prompter, normal or mirrored for glass, and follows the computer as you read. With **Director Mode**, someone else can write and start the script from their own browser.
 
-- **Remote control**, for your computer: you write and edit there, and a Live panel shows the line the iPad is on, the progress and the time left, with play, pause and line-jump buttons.
-- **Display**, for the iPad: it shows the prompter and follows the computer. Settings and script edits arrive live.
-
-<table>
-  <tr>
-    <td width="50%"><img src="media/remote-live.png" alt="The setup screen in Remote control mode, with a Live panel reading iPad display connected"></td>
-    <td width="50%"><img src="media/display-linked.png" alt="The iPad in Display mode, linked to the remote control"></td>
-  </tr>
-  <tr>
-    <td>Remote control on the computer</td>
-    <td>Display on the iPad</td>
-  </tr>
-</table>
-
-The two devices link through claude.ai's shared-room feature, so both need to be signed in to the same Claude account. **This GitHub Pages build doesn't include those two modes,** because a static page has no way to pass messages between devices. They come back here once there's a sync service to connect them.
-
-To try the linked modes on your own machine, serve this folder (see below) and open `tools/linked-test.html?mode=display` in one tab, then `tools/linked-test.html?mode=controller` in a second tab of the same browser. `tools/mock-room.js` stands in for claude.ai and passes messages between the tabs.
+An earlier version of this remote control ran as a Claude artifact on claude.ai. That version is retired. This web page still works on its own, and a Bluetooth keyboard or page-turner can steer it (see the iPad setup above).
 
 ## Host it yourself
 
@@ -190,11 +189,12 @@ To publish your own copy on GitHub Pages, fork this repository, then go to **Set
 ### Project structure
 
 ```
-index.html          The app: markup, styles and script in one file
+index.html          The web app: markup, styles and script in one file
 media/              Icons, screenshots and the promo video
+desktop/            The desktop app (Electron), with its own README
 tools/
-├── linked-test.html  Loads the app with the stand-in room, for testing linked modes
-└── mock-room.js      BroadcastChannel stand-in for claude.ai's room
+├── linked-test.html  Loads the web app with a stand-in room, for testing its linked modes
+└── mock-room.js      BroadcastChannel stand-in for the room service
 ```
 
 The page loads its fonts from Google Fonts. Everything else is in the file, with no libraries.
@@ -207,7 +207,7 @@ The only outside request is to Google Fonts for the typefaces.
 
 ## Credits
 
-Inspired by [Textream](https://github.com/f/textream), the free teleprompter for Mac, iPhone and iPad by [Fatih Kadir Akın](https://fka.dev), which is also MIT licensed. Glass Prompter is a separate, browser-only project and shares no code with it.
+Inspired by [Textream](https://github.com/f/textream), the free teleprompter for Mac, iPhone and iPad by [Fatih Kadir Akın](https://fka.dev), which is also MIT licensed. The web page shares no code with it. The desktop app is a port of Textream and uses its code under the MIT license; see [`desktop/LICENSE-textream.txt`](desktop/LICENSE-textream.txt). Word tracking uses [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (Apache 2.0), and the Dyslexia typeface is [OpenDyslexic](https://opendyslexic.org) (SIL Open Font License).
 
 Typefaces: [Atkinson Hyperlegible](https://www.brailleinstitute.org/freefont/) by the Braille Institute, [Source Serif 4](https://github.com/adobe-fonts/source-serif), [IBM Plex Mono](https://github.com/IBM/plex) and [Lexend](https://www.lexend.com/), all under the SIL Open Font License.
 
