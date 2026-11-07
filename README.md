@@ -168,13 +168,21 @@ Your script and settings are saved on the iPad, so they're still there next time
 
 ## Remote control
 
-To steer the prompter from your computer while an iPad shows it, use the **desktop app**. Turn on **Remote** in its settings and scan the QR code on the iPad. The iPad shows the live prompter, normal or mirrored for glass, and follows the computer as you read. With **Director Mode**, someone else can write and start the script from their own browser.
+Steer the prompter from your computer while the iPad shows it. No app and no account.
 
-An earlier version of this remote control ran as a Claude artifact on claude.ai. That version is retired. This web page still works on its own, and a Bluetooth keyboard or page-turner can steer it (see the iPad setup above).
+1. On the computer, open [the web page](https://emaduneme.github.io/glass-prompter/) and choose **Remote control**. It shows a pair code and a QR code.
+2. On the iPad, scan the QR code with the camera. Or open the same page, choose **Display** and type the code.
+3. Write and edit the script on the computer. Set the mirror, text size and speed there. Press play, pause, jump a line or drag the progress bar. The iPad follows at once.
+
+The computer shows how far the iPad has read and the line on its reading marker. Both devices keep the code, so they pair again by themselves after a reload. Press **New code** to pair a different iPad.
+
+The devices connect straight to each other over an encrypted WebRTC link. The free [PeerJS](https://peerjs.com) server only introduces them; your script does not pass through it. If the two devices cannot reach each other directly, for example on a strict office network, PeerJS's free relay carries the link, still encrypted.
+
+The **desktop app** has a remote too. Turn on **Show on phones and tablets** in its Share tab and scan the QR code. It works on the same Wi-Fi with no outside service. With **Director Mode**, someone else can write and start the script from their own browser.
 
 ## Host it yourself
 
-The whole app is `index.html`. Any static host works.
+The app is `index.html` plus two small libraries in `vendor/`. Any static host works.
 
 ```bash
 git clone https://github.com/emaduneme/glass-prompter.git
@@ -186,24 +194,27 @@ Then open `http://localhost:8000`. You can also open `index.html` straight from 
 
 To publish your own copy on GitHub Pages, fork this repository, then go to **Settings → Pages** and deploy from the `main` branch, root folder.
 
+To pair through your own server instead of PeerJS's free one, run a [PeerServer](https://github.com/peers/peerjs-server) and set `window.GP_PEER` to its PeerJS options (`host`, `port`, `path`, `secure`) before the page's script runs.
+
 ### Project structure
 
 ```
 index.html          The web app: markup, styles and script in one file
+vendor/             PeerJS (the remote link) and a QR code generator, both MIT
 media/              Icons, screenshots and the promo video
 desktop/            The desktop app (Electron), with its own README
-tools/
-├── linked-test.html  Loads the web app with a stand-in room, for testing its linked modes
-└── mock-room.js      BroadcastChannel stand-in for the room service
+tools/remote-test/  End-to-end test of the remote: a local PeerServer and two browsers
 ```
 
-The page loads its fonts from Google Fonts. Everything else is in the file, with no libraries.
+The page loads its fonts from Google Fonts. Everything else is in this repository.
 
 ## Privacy
 
-Glass Prompter has no server, no account, no analytics and no ads. Your script and settings are stored in your browser's local storage on that device and never leave it. Clearing your browser data removes them.
+Glass Prompter has no server of its own, no account, no analytics and no ads. Your script and settings are stored in your browser's local storage on that device. Clearing your browser data removes them.
 
-The only outside request is to Google Fonts for the typefaces.
+On its own, the page makes one outside request: Google Fonts, for the typefaces.
+
+In **Remote control** and **Display**, the page also connects to PeerJS's free server to find the other device by its pair code. The script then goes from device to device over an encrypted link, and only the paired devices see it. Anyone who has your code can join, so press **New code** if you shared it by mistake.
 
 ## Credits
 

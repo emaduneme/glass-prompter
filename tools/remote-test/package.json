@@ -1,0 +1,12 @@
+{
+  "name": "glass-prompter-remote-test",
+  "private": true,
+  "description": "End-to-end test of the web page's remote control.",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "devDependencies": {
+    "peer": "1.0.2",
+    "playwright": "1.63.0"
+  }
+}

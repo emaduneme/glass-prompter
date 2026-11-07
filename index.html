@@ -380,6 +380,28 @@ body.mode-controller #start { display: none; }
 .tbtn.main { flex: 1.6; background: var(--fg); color: var(--bg); border-color: var(--fg); }
 .tbtn:disabled { opacity: .4; cursor: not-allowed; }
 
+/* ---------- Pairing ---------- */
+.pair { display: flex; gap: 14px; align-items: center; }
+.pair-qr { flex: none; width: 112px; height: 112px; padding: 6px; border-radius: 8px; background: #fff; }
+.pair-qr svg { display: block; width: 100%; height: 100%; }
+.pair.linked .pair-qr { display: none; }
+.pair-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pair-code { font-family: var(--font-num); font-size: 1.6rem; letter-spacing: .08em; line-height: 1.1; }
+.pair-input {
+  width: 100%;
+  max-width: 220px;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1px solid var(--muted);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-family: var(--font-num);
+  font-size: 1.6rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.pair-input[aria-invalid="true"] { border-color: var(--tally); }
+
 /* ---------- Display mode card (shown after leaving the display) ---------- */
 .display-card { display: none; max-width: 560px; }
 body.mode-display .display-card { display: flex; }
@@ -621,7 +643,9 @@ body.mode-display .solo-only { display: none; }
   <section class="group display-card" aria-labelledby="displayTitle">
     <h2 id="displayTitle">Display</h2>
     <p>This screen shows the prompter and follows the device set to Remote control. The script, mirror, text size and speed all come from that device.</p>
-    <p>Open this same page on your computer and choose <strong>Remote control</strong>. Both devices need to be signed in to claude.ai.</p>
+    <label for="pairInput" class="label">Pair code</label>
+    <input id="pairInput" class="pair-input" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="ABC 123" aria-describedby="pairHint">
+    <p id="pairHint">On the computer, open this page and choose <strong>Remote control</strong>. It shows the code.</p>
     <button type="button" id="openDisplay" class="start">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
       Open display
@@ -647,6 +671,15 @@ body.mode-display .solo-only { display: none; }
       <fieldset class="group live" id="live">
         <legend class="label">Live</legend>
         <div class="link-status"><span class="dot" id="linkDot"></span><span id="linkText">Connecting…</span></div>
+        <div class="pair" id="pairBox">
+          <div class="pair-qr" id="pairQr" role="img" aria-label="QR code that pairs the iPad"></div>
+          <div class="pair-text">
+            <span class="mode-note">Pair code</span>
+            <strong class="pair-code" id="pairCode"></strong>
+            <span class="mode-note" id="pairNote">Scan with the iPad camera, or enter the code there.</span>
+            <button type="button" class="ghost" id="newCode">New code</button>
+          </div>
+        </div>
         <div class="live-progress">
           <div class="meter" id="liveMeter" role="slider" tabindex="0" aria-label="Position in script" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="liveBar"></i></div>
           <span class="readout" id="liveLeft">–</span>
@@ -804,6 +837,8 @@ body.mode-display .solo-only { display: none; }
   </div>
 </div>
 
+<script src="vendor/peerjs.min.js"></script>
+<script src="vendor/qrcode.js"></script>
 <script>
 (() => {
   const STORE = "glass-prompter.v1";
@@ -826,9 +861,9 @@ And third, the script is there to help you, not to trap you. Read it like you ar
 
 That is it for today. If this helped, let me know what you want me to cover next.`;
 
-  // The live link between devices uses claude.ai's room service. On any other
-  // host the page runs on one device, so the two linked modes are left out.
-  const CAN_LINK = !!(window.claude && typeof window.claude.use === "function");
+  // The live link between devices needs PeerJS (vendor/peerjs.min.js). If it
+  // did not load, the page runs on one device and the linked modes are left out.
+  const CAN_LINK = typeof window.Peer === "function";
   const MODES = CAN_LINK
     ? [["solo", "On its own"], ["controller", "Remote control"], ["display", "Display"]]
     : [["solo", "On its own"]];
@@ -894,6 +929,36 @@ That is it for today. If this helped, let me know what you want me to cover next
     const m = localStorage.getItem(MODE_STORE);
     if (MODES.some(([v]) => v === m)) mode = m;
   } catch (e) {}
+
+  /* ---------- Pair code ----------
+     The computer makes a six-character code. The iPad gets it from the QR
+     code (a link with ?mode=display&pair=CODE) or by typing it. */
+  const PAIR_STORE = "glass-prompter.pair";
+  const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const cleanCode = (t) => [...String(t || "").toUpperCase()].filter((c) => CODE_CHARS.includes(c)).join("").slice(0, 6);
+  const showCode = (c) => (c.length === 6 ? c.slice(0, 3) + " " + c.slice(3) : c);
+  function newCode() {
+    const a = new Uint32Array(6);
+    crypto.getRandomValues(a);
+    return [...a].map((n) => CODE_CHARS[n % CODE_CHARS.length]).join("");
+  }
+  let pairCode = "";
+  try { pairCode = cleanCode(localStorage.getItem(PAIR_STORE)); } catch (e) {}
+  {
+    const q = new URLSearchParams(location.search);
+    const qm = q.get("mode"), qc = cleanCode(q.get("pair"));
+    if (CAN_LINK && MODES.some(([val]) => val === qm)) {
+      mode = qm;
+      try { localStorage.setItem(MODE_STORE, mode); } catch (e) {}
+    }
+    if (qc.length === 6) pairCode = qc;
+    if (qm || q.has("pair")) history.replaceState(null, "", location.pathname + location.hash);
+  }
+  if (pairCode.length !== 6) pairCode = "";
+  function setPairCode(code) {
+    pairCode = code;
+    try { localStorage.setItem(PAIR_STORE, code); } catch (e) {}
+  }
   const v = () => (mode === "display" ? r : s);
 
   let saveTimer = 0;
@@ -1022,8 +1087,10 @@ That is it for today. If this helped, let me know what you want me to cover next
     try { localStorage.setItem(MODE_STORE, mode); } catch (e) {}
     renderMode();
     if (was !== mode && !stage.hidden) closeStage();
+    syncLink();
     announce();
-    if (mode === "display") openStage();
+    if (mode === "display" && (pairCode || !room)) openStage();
+    else if (mode === "display") $("pairInput").focus();
   }
   function renderMode() {
     document.body.classList.toggle("mode-controller", mode === "controller");
@@ -1232,7 +1299,14 @@ That is it for today. If this helped, let me know what you want me to cover next
   }
 
   $("start").addEventListener("click", openStage);
-  $("openDisplay").addEventListener("click", openStage);
+  $("openDisplay").addEventListener("click", () => {
+    if (room && !pairCode) {
+      $("pairInput").setAttribute("aria-invalid", "true");
+      $("pairInput").focus();
+      return;
+    }
+    openStage();
+  });
   $("exitBtn").addEventListener("click", closeStage);
   $("restartBtn").addEventListener("click", () => { stopCountdown(); setPlaying(false); pos = 0; paint(); });
   $("playBtn").addEventListener("click", togglePlay);
@@ -1486,8 +1560,8 @@ That is it for today. If this helped, let me know what you want me to cover next
       const dot = $("linkDot"), txt = $("linkText");
       const ds = displays();
       let state = "wait", label = "Connecting…";
-      if (roomResolved && !room) { state = ""; label = "The live link isn't available here. Open this page on claude.ai while signed in."; }
-      else if (linked() && !ds.length) { state = "wait"; label = "No display yet. On the iPad, open this page and choose Display."; }
+      if (!room) { state = ""; label = "The live link didn't load. Check the internet connection and reload the page."; }
+      else if (linked() && !ds.length) { state = "wait"; label = "No display yet. Pair the iPad with the code below."; }
       else if (linked()) {
         state = "ok";
         const open = ds.filter((d) => d.presence.open);
@@ -1515,6 +1589,8 @@ That is it for today. If this helped, let me know what you want me to cover next
       else if (d && !d.presence.open) lineText = "On the iPad, tap Open display.";
       line.textContent = lineText;
       line.classList.toggle("empty", !(d && d.presence.line));
+      $("pairBox").classList.toggle("linked", ds.length > 0);
+      $("pairNote").textContent = ds.length ? "Paired. Use a new code to pair a different iPad." : "Scan with the iPad camera, or enter the code there.";
     }
 
     // Display stage
@@ -1525,15 +1601,15 @@ That is it for today. If this helped, let me know what you want me to cover next
       const waiting = $("waiting");
       waiting.hidden = stage.hidden || !!r.script;
       if (!waiting.hidden) {
-        if (roomResolved && !room) {
-          $("waitTitle").textContent = "The live link isn't available here";
-          $("waitText").textContent = "Open this page on claude.ai while signed in, or switch this device to On its own.";
+        if (!room) {
+          $("waitTitle").textContent = "The live link didn't load";
+          $("waitText").textContent = "Check the internet connection and reload, or switch this device to On its own.";
         } else if (!linked()) {
           $("waitTitle").textContent = "Connecting…";
-          $("waitText").textContent = "Looking for your remote control.";
+          $("waitText").textContent = `Looking for the computer with code ${showCode(pairCode)}.`;
         } else {
           $("waitTitle").textContent = "Waiting for your computer";
-          $("waitText").textContent = "On the PC, open this same page and choose Remote control. The script will appear here.";
+          $("waitText").textContent = `On the computer, open this page, choose Remote control and use code ${showCode(pairCode)}. The script will appear here.`;
         }
       }
     }
@@ -1565,29 +1641,280 @@ That is it for today. If this helped, let me know what you want me to cover next
     }
   }, 4000);
 
-  const onRoomError = () => renderLink();
-  const roomPromise = window.claude && typeof window.claude.use === "function"
-    ? window.claude.use("room").catch(() => null)
-    : Promise.resolve(null);
-  roomPromise.then((rm) => {
-    room = rm;
-    roomResolved = true;
-    if (!rm) { renderLink(); return; }
-    rm.onConnection((c) => { if (c) announce(); renderLink(); }, onRoomError);
-    rm.onPeers((change) => {
+  /* ---------- Direct link (WebRTC through PeerJS) ----------
+     The first device to arrive holds the pair code as its PeerJS ID. The
+     others connect to it, and it passes their messages on. Messages go
+     device to device on an encrypted WebRTC channel; PeerJS's free public
+     server only introduces the devices. Set window.GP_PEER to PeerJS options
+     (host, port, path, config) to use your own server instead. */
+  function createLink() {
+    const me = newCode() + newCode();
+    const PEER_PREFIX = "glassprompter-";
+    let myPresence = {};
+    const peers = new Map();
+    peers.set(me, { peer: me, sameTab: true, isMe: true, presence: myPresence });
+    const topicL = {}, peerL = [], connL = [];
+    let code = "", peer = null, hubConn = null, isHub = false, up = false;
+    let gen = 0, retry = 0, retryTimer = 0, lastHub = 0;
+    const conns = new Map(); // hub only: connection -> { id, seen }
+
+    const snap = () => Object.freeze([...peers.values()]);
+    const firePeers = (joined = [], left = []) => {
+      const all = snap();
+      peerL.forEach((f) => f({ peers: all, joined, left, updated: [] }));
+    };
+    const setUp = (v) => {
+      if (up === v) return;
+      up = v;
+      connL.forEach((f) => f(v));
+    };
+    const options = () => ({ debug: 0, ...(window.GP_PEER || {}) });
+    const dropOthers = () => {
+      const left = [...peers.values()].filter((p) => !p.isMe);
+      left.forEach((p) => peers.delete(p.peer));
+      if (left.length) firePeers([], left);
+    };
+    const dropPeer = (id) => {
+      const p = peers.get(id);
+      if (!p || p.isMe) return;
+      peers.delete(id);
+      firePeers([], [p]);
+    };
+    function send(msg, except) {
+      if (isHub) {
+        for (const c of conns.keys()) if (c !== except && c.open) c.send(msg);
+      } else if (hubConn && hubConn.open) {
+        hubConn.send(msg);
+      }
+    }
+    function handle(msg, conn) {
+      if (!msg || typeof msg !== "object" || typeof msg.from !== "string" || msg.from.length > 24 || msg.from === me) return;
+      if (msg.k === "hello" || msg.k === "presence") {
+        const presence = msg.presence && typeof msg.presence === "object" ? msg.presence : {};
+        const isNew = !peers.has(msg.from);
+        peers.set(msg.from, { peer: msg.from, sameTab: false, isMe: false, presence });
+        if (conn && conns.has(conn)) conns.get(conn).id = msg.from;
+        firePeers(isNew ? [peers.get(msg.from)] : []);
+      } else if (msg.k === "left") {
+        dropPeer(msg.from);
+      } else if (msg.k === "emit" && typeof msg.topic === "string") {
+        (topicL[msg.topic] || []).forEach((f) => f({ topic: msg.topic, data: msg.data, peer: msg.from, sameTab: false, isMe: false }));
+      }
+    }
+
+    function teardown() {
+      for (const c of conns.keys()) { try { c.close(); } catch (e) {} }
+      conns.clear();
+      if (hubConn) { try { hubConn.close(); } catch (e) {} }
+      hubConn = null;
+      isHub = false;
+      if (peer) { try { peer.destroy(); } catch (e) {} }
+      peer = null;
+    }
+    function later(g) {
+      if (g !== gen) return;
+      setUp(false);
+      dropOthers();
+      clearTimeout(retryTimer);
+      const wait = Math.min(10000, 500 * 2 ** retry);
+      retry += 1;
+      retryTimer = setTimeout(() => { if (g === gen) attempt(); }, wait);
+    }
+
+    // Try to hold the code. If another device holds it, connect to that one.
+    function attempt() {
+      const g = ++gen;
+      clearTimeout(retryTimer);
+      teardown();
+      if (!code) return;
+      const hubId = PEER_PREFIX + code.toLowerCase();
+      const p = new Peer(hubId, options());
+      peer = p;
+      p.on("open", () => {
+        if (g !== gen) return;
+        isHub = true;
+        retry = 0;
+        setUp(true);
+      });
+      p.on("connection", (c) => {
+        if (g !== gen) return;
+        const info = { id: null, seen: Date.now(), gone: null };
+        conns.set(c, info);
+        c.on("open", () => {
+          if (g !== gen) return;
+          // Tell the newcomer who is here.
+          c.send({ k: "presence", from: me, presence: myPresence });
+          for (const [other, info] of conns) {
+            if (other !== c && info.id && peers.has(info.id)) c.send({ k: "presence", from: info.id, presence: peers.get(info.id).presence });
+          }
+        });
+        c.on("data", (m) => {
+          if (g !== gen) return;
+          info.seen = Date.now();
+          handle(m, c);
+          if (m && m.k !== "ping") send(m, c);
+        });
+        const gone = () => {
+          if (g !== gen || !conns.has(c)) return;
+          conns.delete(c);
+          try { c.close(); } catch (e) {}
+          if (info.id) { dropPeer(info.id); send({ k: "left", from: info.id }); }
+        };
+        info.gone = gone;
+        c.on("close", gone);
+        c.on("error", gone);
+      });
+      p.on("error", (e) => {
+        if (g !== gen) return;
+        if (e && e.type === "unavailable-id") join(g, hubId);
+        else later(g);
+      });
+      p.on("disconnected", () => { if (g === gen && !p.destroyed) p.reconnect(); });
+    }
+
+    function join(g, hubId) {
+      teardown();
+      const p = new Peer(options());
+      peer = p;
+      p.on("open", () => {
+        if (g !== gen) return;
+        const c = p.connect(hubId, { reliable: true, serialization: "json" });
+        hubConn = c;
+        c.on("open", () => {
+          if (g !== gen) return;
+          retry = 0;
+          lastHub = Date.now();
+          setUp(true);
+          c.send({ k: "hello", from: me, presence: myPresence });
+        });
+        c.on("data", (m) => {
+          if (g !== gen) return;
+          lastHub = Date.now();
+          handle(m, null);
+        });
+        c.on("close", () => later(g));
+        c.on("error", () => later(g));
+      });
+      p.on("error", () => later(g));
+      p.on("disconnected", () => { if (g === gen && !p.destroyed) p.reconnect(); });
+    }
+
+    // A closed tab does not always close its channel, so both sides ping and
+    // drop a device that has gone quiet.
+    setInterval(() => {
+      if (!up) return;
+      send({ k: "ping", from: me });
+      const now = Date.now();
+      if (isHub) {
+        for (const info of [...conns.values()]) if (now - info.seen > 9000 && info.gone) info.gone();
+      } else if (hubConn && now - lastHub > 9000) {
+        later(gen);
+      }
+    }, 2500);
+
+    return {
+      connected: () => up,
+      code: () => code,
+      join(next) {
+        code = next;
+        retry = 0;
+        setUp(false);
+        dropOthers();
+        attempt();
+      },
+      leave() {
+        gen += 1;
+        clearTimeout(retryTimer);
+        teardown();
+        code = "";
+        setUp(false);
+        dropOthers();
+      },
+      onConnection(f) { connL.push(f); },
+      onPeers(f) { peerL.push(f); },
+      on(topic, f) { (topicL[topic] = topicL[topic] || []).push(f); },
+      emit(topic, data) {
+        send({ k: "emit", from: me, topic, data });
+        return Promise.resolve();
+      },
+      presence(patch) {
+        myPresence = { ...myPresence, ...patch };
+        peers.get(me).presence = myPresence;
+        send({ k: "presence", from: me, presence: myPresence });
+        firePeers();
+        return Promise.resolve();
+      },
+      peers: snap,
+    };
+  }
+
+  if (CAN_LINK) {
+    room = createLink();
+    room.onConnection((c) => { if (c) announce(); renderLink(); });
+    room.onPeers((change) => {
       if (mode === "controller" && change.joined.some((p) => !p.sameTab)) scheduleSendAll(400);
       renderLink();
-    }, onRoomError);
-    rm.on("need", (m) => { if (!m.sameTab && mode === "controller") scheduleSendAll(150); }, onRoomError);
-    rm.on("settings", (m) => { if (!m.sameTab && mode === "display") onSettings(m.data); }, onRoomError);
-    rm.on("script", (m) => { if (!m.sameTab && mode === "display") onScriptChunk(m.data); }, onRoomError);
-    rm.on("cmd", (m) => { if (!m.sameTab && mode === "display") onCmd(m.data); }, onRoomError);
+    });
+    room.on("need", (m) => { if (mode === "controller") scheduleSendAll(150); });
+    room.on("settings", (m) => { if (mode === "display") onSettings(m.data); });
+    room.on("script", (m) => { if (mode === "display") onScriptChunk(m.data); });
+    room.on("cmd", (m) => { if (mode === "display") onCmd(m.data); });
+  }
+  roomResolved = true;
+
+  // Join the pair code in the linked modes; stay off the network otherwise.
+  function syncLink() {
+    if (!room) return;
+    if (mode === "controller" && !pairCode) setPairCode(newCode());
+    const want = mode === "solo" ? "" : pairCode;
+    if (want !== room.code()) {
+      if (want) room.join(want);
+      else room.leave();
+    }
+    renderPair();
+    renderLink();
+  }
+  let qrFor = "";
+  function renderPair() {
+    $("pairCode").textContent = showCode(pairCode);
+    const url = location.origin + location.pathname + "?mode=display&pair=" + pairCode;
+    if (mode === "controller" && pairCode && qrFor !== url && typeof qrcode === "function") {
+      const q = qrcode(0, "M");
+      q.addData(url);
+      q.make();
+      $("pairQr").innerHTML = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+      qrFor = url;
+    }
+    const input = $("pairInput");
+    if (document.activeElement !== input) input.value = showCode(pairCode);
+  }
+  $("newCode").addEventListener("click", () => {
+    setPairCode(newCode());
+    syncLink();
+  });
+  function takeInput() {
+    const input = $("pairInput");
+    const code = cleanCode(input.value);
+    const ok = code.length === 6;
+    input.setAttribute("aria-invalid", input.value.trim() && !ok ? "true" : "false");
+    if (ok && code !== pairCode) {
+      setPairCode(code);
+      syncLink();
+    }
+    return ok;
+  }
+  $("pairInput").addEventListener("input", takeInput);
+  $("pairInput").addEventListener("change", () => { takeInput(); $("pairInput").value = showCode(cleanCode($("pairInput").value)); });
+  $("pairInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && takeInput()) openStage();
   });
 
   scriptEl.value = s.script;
   document.querySelector(".mode-row").hidden = !CAN_LINK;
+  if (!CAN_LINK) mode = "solo";
   renderMode();
-  if (mode === "display") openStage();
+  syncLink();
+  if (mode === "display" && pairCode) openStage();
 })();
 </script>
 </body>
