@@ -79,5 +79,5 @@ xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:e2e   # on Linux; screensho
 ## Other open items
 
 - `claude/desktop-app` is not merged to `main` yet, so the README's download link isn't on the repo's front page.
-- The web page (`index.html`) still offers "Remote control" and "Display" modes that tell people to sign in to claude.ai. That version is retired; remove the modes or point them to the desktop app.
+- Done: the web page (`index.html`) no longer has the old two-device modes. It takes the same remote buttons as the desktop app.
 - Emmanuel prefers short sentences, no em dashes, and plain language (ASD-STE100 style) in anything he reads.

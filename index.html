@@ -38,7 +38,6 @@
   --stage-ui-muted: #9AA3AD;
   --stage-panel: rgba(18, 21, 26, 0.86);
   --stage-line: rgba(255, 255, 255, 0.14);
-  --stage-ok: #4ADE80;
   --tally: #E5484D;
 
   --font-ui: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -131,16 +130,6 @@ h1 {
   font-size: var(--step-0);
   font-variant-numeric: tabular-nums;
 }
-
-.mode-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 6px;
-}
-@media (min-width: 860px) {
-  .mode-row { grid-template-columns: auto minmax(0, 440px) minmax(0, 1fr); align-items: center; gap: 14px; }
-}
-.mode-note { margin: 0; color: var(--muted); font-size: var(--step-0); }
 
 .sheet {
   flex: 1;
@@ -337,56 +326,6 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-h
 .start:disabled { opacity: .45; cursor: not-allowed; }
 .start svg { width: 20px; height: 20px; }
 
-/* ---------- Live panel (Remote control mode) ---------- */
-.live { display: none; }
-body.mode-controller .live { display: flex; }
-body.mode-controller #start { display: none; }
-.link-status { display: flex; align-items: flex-start; gap: 8px; font-weight: 700; font-size: var(--step-1); }
-.dot { flex: none; width: 10px; height: 10px; margin-top: .4em; border-radius: 50%; background: var(--muted); }
-.dot.wait { background: var(--accent); }
-.dot.ok { background: var(--ok); }
-.live-progress { display: flex; align-items: center; gap: 10px; }
-.meter {
-  flex: 1;
-  height: 10px;
-  border-radius: 5px;
-  background: var(--sunken);
-  overflow: hidden;
-  cursor: pointer;
-}
-.meter i { display: block; height: 100%; width: 0; background: var(--accent); }
-.meter[aria-disabled="true"] { cursor: default; }
-.now {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--sunken);
-  min-height: 2.9em;
-  overflow-wrap: anywhere;
-}
-.now.empty { color: var(--muted); }
-.transport { display: flex; gap: 6px; }
-.tbtn {
-  flex: 1;
-  height: 48px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.tbtn svg { width: 22px; height: 22px; }
-.tbtn.main { flex: 1.6; background: var(--fg); color: var(--bg); border-color: var(--fg); }
-.tbtn:disabled { opacity: .4; cursor: not-allowed; }
-
-/* ---------- Display mode card (shown after leaving the display) ---------- */
-.display-card { display: none; max-width: 560px; }
-body.mode-display .display-card { display: flex; }
-body.mode-display .sheet { display: none; }
-.display-card h2 { margin: 0; font-size: var(--step-3); }
-.display-card p { margin: 0; color: var(--muted); }
-
 /* ---------- Stage ---------- */
 .stage {
   position: fixed;
@@ -477,29 +416,6 @@ body.mode-display .sheet { display: none; }
   font-size: var(--step-1);
   pointer-events: none;
 }
-.waiting {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  z-index: 4;
-  pointer-events: none;
-}
-.waiting > div {
-  max-width: 440px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  text-align: center;
-  color: var(--stage-ui);
-}
-.waiting h2 { margin: 0; font-size: 1.5rem; text-wrap: balance; }
-.waiting p { margin: 0; color: var(--stage-ui-muted); }
-.waiting .dot { margin: 0; width: 14px; height: 14px; background: var(--tally); }
-.pulse { animation: pulse 1.6s ease-in-out infinite; }
-@keyframes pulse { 50% { opacity: .3; } }
 
 .hud {
   position: absolute;
@@ -580,25 +496,12 @@ body.mode-display .sheet { display: none; }
   font-variant-numeric: tabular-nums;
 }
 .hval b { display: block; color: var(--stage-ui); font-weight: 500; font-size: var(--step-1); }
-.link-hud {
-  display: none;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--step-0);
-  font-weight: 700;
-  color: var(--stage-ui-muted);
-}
-.link-hud .dot { margin: 0; background: var(--stage-ui-muted); }
-.link-hud .dot.ok { background: var(--stage-ok); }
-body.mode-display .link-hud { display: inline-flex; }
-body.mode-display .solo-only { display: none; }
 @media (max-width: 560px) {
   .hud-row { justify-content: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .hud, .glass span { transition: none; }
-  .pulse { animation: none; }
 }
 </style>
 </head>
@@ -612,22 +515,6 @@ body.mode-display .solo-only { display: none; }
     <p class="stats" id="stats" aria-live="polite"></p>
   </header>
 
-  <div class="mode-row">
-    <span class="label" id="modeName">Use this device for</span>
-    <div class="seg" data-mode-seg role="radiogroup" aria-labelledby="modeName"></div>
-    <p class="mode-note" id="modeNote"></p>
-  </div>
-
-  <section class="group display-card" aria-labelledby="displayTitle">
-    <h2 id="displayTitle">Display</h2>
-    <p>This screen shows the prompter and follows the device set to Remote control. The script, mirror, text size and speed all come from that device.</p>
-    <p>Open this same page on your computer and choose <strong>Remote control</strong>. Both devices need to be signed in to claude.ai.</p>
-    <button type="button" id="openDisplay" class="start">
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
-      Open display
-    </button>
-  </section>
-
   <main class="sheet">
     <section class="script-pane">
       <div class="pane-head">
@@ -640,35 +527,10 @@ body.mode-display .solo-only { display: none; }
       </div>
       <textarea id="script" spellcheck="true" placeholder="Paste or type your script here."></textarea>
       <p class="hint">Words in [square brackets] show dimmed on the prompter, for cues like [pause] or [show slide].</p>
-      <p class="hint">Keyboard or Bluetooth remote: <kbd>Space</kbd> play/pause, <kbd>↑</kbd> <kbd>↓</kbd> speed, <kbd>←</kbd> <kbd>→</kbd> or Page keys jump a line, <kbd>M</kbd> mirror, <kbd>Esc</kbd> exit. In Remote control mode the same keys steer the display when you're not typing.</p>
+      <p class="hint">Keyboard or Bluetooth remote: <kbd>Space</kbd> play/pause, <kbd>↑</kbd> <kbd>↓</kbd> speed, <kbd>←</kbd> <kbd>→</kbd> or Page keys jump a line, <kbd>M</kbd> mirror, <kbd>Esc</kbd> exit.</p>
     </section>
 
     <aside class="controls" aria-label="Prompter settings">
-      <fieldset class="group live" id="live">
-        <legend class="label">Live</legend>
-        <div class="link-status"><span class="dot" id="linkDot"></span><span id="linkText">Connecting…</span></div>
-        <div class="live-progress">
-          <div class="meter" id="liveMeter" role="slider" tabindex="0" aria-label="Position in script" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="liveBar"></i></div>
-          <span class="readout" id="liveLeft">–</span>
-        </div>
-        <p class="now empty" id="liveLine" aria-live="polite">The line on the display's reading marker shows here.</p>
-        <div class="transport">
-          <button type="button" class="tbtn" id="tRestart" aria-label="Back to start">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg>
-          </button>
-          <button type="button" class="tbtn" id="tBack" aria-label="Back one line">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
-          </button>
-          <button type="button" class="tbtn main" id="tPlay" aria-label="Play">
-            <svg id="tPlayIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>
-            <svg id="tPauseIcon" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M6 4.5h4.2v15H6zM13.8 4.5H18v15h-4.2z"/></svg>
-          </button>
-          <button type="button" class="tbtn" id="tFwd" aria-label="Forward one line">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
-          </button>
-        </div>
-      </fieldset>
-
       <fieldset class="group">
         <legend class="label">Glass</legend>
         <div class="mirror-row">
@@ -742,14 +604,6 @@ body.mode-display .solo-only { display: none; }
     <div id="count" class="countdown" hidden></div>
   </div>
 
-  <div id="waiting" class="waiting" hidden>
-    <div>
-      <span class="dot pulse" aria-hidden="true"></span>
-      <h2 id="waitTitle">Waiting for your computer</h2>
-      <p id="waitText">On the PC, open this same page and choose Remote control. The script will appear here.</p>
-    </div>
-  </div>
-
   <div id="hud" class="hud">
     <div class="hud-panel">
       <div class="progress-row">
@@ -767,9 +621,7 @@ body.mode-display .solo-only { display: none; }
           </button>
         </div>
 
-        <span class="link-hud"><span class="dot" id="hudDot"></span><span id="hudLink">Remote not connected</span></span>
-
-        <div class="cluster solo-only" aria-label="Speed">
+        <div class="cluster" aria-label="Speed">
           <button type="button" class="hbtn" id="slowerBtn" aria-label="Slower">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 12h12"/></svg>
           </button>
@@ -784,14 +636,14 @@ body.mode-display .solo-only { display: none; }
           <svg id="pauseIcon" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M6 4.5h4.2v15H6zM13.8 4.5H18v15h-4.2z"/></svg>
         </button>
 
-        <div class="cluster solo-only" aria-label="Text size">
+        <div class="cluster" aria-label="Text size">
           <button type="button" class="hbtn" id="smallerBtn" aria-label="Smaller text">A<span style="font-size:.7em">−</span></button>
           <span class="hval"><b id="hudSize">64</b>size</span>
           <button type="button" class="hbtn" id="biggerBtn" aria-label="Larger text">A<span style="font-size:.9em">+</span></button>
         </div>
 
         <div class="cluster">
-          <button type="button" class="hbtn solo-only" id="mirrorBtn" aria-label="Change mirror">
+          <button type="button" class="hbtn" id="mirrorBtn" aria-label="Change mirror">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M8 7L3 12l5 5"/><path d="M16 7l5 5-5 5"/></svg>
             <span id="hudMirror">Off</span>
           </button>
@@ -807,7 +659,6 @@ body.mode-display .solo-only { display: none; }
 <script>
 (() => {
   const STORE = "glass-prompter.v1";
-  const MODE_STORE = "glass-prompter.mode";
   const SAMPLE = `[Sample script. Replace it with your own.]
 
 Hi, and welcome back. Today I want to walk you through three things I wish I had known before I started recording videos at home.
@@ -826,17 +677,6 @@ And third, the script is there to help you, not to trap you. Read it like you ar
 
 That is it for today. If this helped, let me know what you want me to cover next.`;
 
-  // The live link between devices uses claude.ai's room service. On any other
-  // host the page runs on one device, so the two linked modes are left out.
-  const CAN_LINK = !!(window.claude && typeof window.claude.use === "function");
-  const MODES = CAN_LINK
-    ? [["solo", "On its own"], ["controller", "Remote control"], ["display", "Display"]]
-    : [["solo", "On its own"]];
-  const MODE_NOTES = {
-    solo: "Everything runs on this device. Use this on the iPad by itself.",
-    controller: "Edit and steer from here. Open this page on the iPad and choose Display.",
-    display: "This screen shows the prompter and follows the device set to Remote control.",
-  };
   const OPTIONS = {
     mirror: [["off", "Off"], ["horizontal", "Horizontal"], ["vertical", "Vertical"], ["both", "Both"]],
     font: [["sans", "Sans"], ["serif", "Serif"], ["mono", "Mono"], ["readable", "Lexend"]],
@@ -880,21 +720,11 @@ That is it for today. If this helped, let me know what you want me to cover next
     countdown: true,
   };
 
-  // `s` is this device's own script and settings. `r` is what a Display
-  // receives from the Remote control and is never saved.
   let s = { ...defaults };
   try {
     const saved = JSON.parse(localStorage.getItem(STORE) || "null");
     if (saved && typeof saved === "object") s = { ...defaults, ...saved };
   } catch (e) {}
-  const r = { ...defaults, script: "", scriptId: null };
-
-  let mode = "solo";
-  try {
-    const m = localStorage.getItem(MODE_STORE);
-    if (MODES.some(([v]) => v === m)) mode = m;
-  } catch (e) {}
-  const v = () => (mode === "display" ? r : s);
 
   let saveTimer = 0;
   function save() {
@@ -920,9 +750,6 @@ That is it for today. If this helped, let me know what you want me to cover next
     el.innerHTML = segMarkup(key, OPTIONS[key]);
     el.addEventListener("change", (e) => update(key, e.target.value));
   }
-  const modeSeg = document.querySelector("[data-mode-seg]");
-  modeSeg.innerHTML = segMarkup("mode", MODES);
-  modeSeg.addEventListener("change", (e) => setMode(e.target.value));
 
   const sw = document.querySelector('[data-swatches="color"]');
   sw.innerHTML = COLORS.map(([val, label, hex]) =>
@@ -937,15 +764,13 @@ That is it for today. If this helped, let me know what you want me to cover next
     s.script = scriptEl.value;
     save();
     renderStats();
-    if (mode === "controller") scheduleScript(700);
   });
 
   function update(key, value) {
     s[key] = value;
     save();
     syncControls();
-    if (mode === "controller") scheduleSettings();
-    if (!stage.hidden && mode !== "display") applyStyle(true);
+    if (!stage.hidden) applyStyle(true);
   }
 
   function syncControls() {
@@ -963,12 +788,10 @@ That is it for today. If this helped, let me know what you want me to cover next
     const m = MIRROR[s.mirror] || MIRROR.off;
     $("glassText").style.transform = `scale(${m.sx}, ${m.sy})`;
     $("mirrorNote").textContent = m.note;
-    const cur = v();
-    const cm = MIRROR[cur.mirror] || MIRROR.off;
-    $("hudSpeed").textContent = cur.speed.toFixed(1);
-    $("hudSize").textContent = cur.size;
-    $("hudMirror").textContent = cm.short;
-    $("mirrorBtn").classList.toggle("on", cur.mirror !== "off");
+    $("hudSpeed").textContent = s.speed.toFixed(1);
+    $("hudSize").textContent = s.size;
+    $("hudMirror").textContent = m.short;
+    $("mirrorBtn").classList.toggle("on", s.mirror !== "off");
   }
 
   function wordCount(text) {
@@ -983,9 +806,7 @@ That is it for today. If this helped, let me know what you want me to cover next
   }
   function renderStats() {
     const n = wordCount(s.script);
-    $("stats").textContent = mode === "display"
-      ? ""
-      : n ? `${n} words · about ${fmt(n / 150 * 60)} at 150 words a minute` : "No script yet";
+    $("stats").textContent = n ? `${n} words · about ${fmt(n / 150 * 60)} at 150 words a minute` : "No script yet";
     $("start").disabled = n === 0;
   }
 
@@ -996,7 +817,6 @@ That is it for today. If this helped, let me know what you want me to cover next
     s.script = await f.text();
     scriptEl.value = s.script;
     save(); renderStats();
-    if (mode === "controller") scheduleScript(100);
     e.target.value = "";
   });
 
@@ -1012,29 +832,7 @@ That is it for today. If this helped, let me know what you want me to cover next
     clearTimeout(clearArmed); clearArmed = 0;
     b.classList.remove("armed"); b.textContent = "Clear";
     s.script = ""; scriptEl.value = ""; save(); renderStats(); scriptEl.focus();
-    if (mode === "controller") scheduleScript(100);
   });
-
-  function setMode(next) {
-    if (!MODES.some(([val]) => val === next)) return;
-    const was = mode;
-    mode = next;
-    try { localStorage.setItem(MODE_STORE, mode); } catch (e) {}
-    renderMode();
-    if (was !== mode && !stage.hidden) closeStage();
-    announce();
-    if (mode === "display") openStage();
-  }
-  function renderMode() {
-    document.body.classList.toggle("mode-controller", mode === "controller");
-    document.body.classList.toggle("mode-display", mode === "display");
-    const radio = document.getElementById(`mode-${mode}`);
-    if (radio) radio.checked = true;
-    $("modeNote").textContent = MODE_NOTES[mode];
-    renderStats();
-    syncControls();
-    renderLink();
-  }
 
   /* ---------- Prompter ---------- */
   const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -1052,19 +850,18 @@ That is it for today. If this helped, let me know what you want me to cover next
   let countTimer = 0, counting = false;
   let hideTimer = 0;
 
-  const pxPerSec = () => v().speed * v().size * 0.08;
+  const pxPerSec = () => s.speed * s.size * 0.08;
   const endPos = () => Math.max(0, textH - lineH);
   const clampPos = (p) => Math.min(endPos(), Math.max(0, p));
 
   function applyStyle(keepPlace) {
-    const cur = v();
     const frac = textH > 1 ? pos / textH : 0;
-    textEl.style.fontFamily = FONTS[cur.font] || FONTS.sans;
-    textEl.style.fontSize = cur.size + "px";
-    textEl.style.color = (COLORS.find((c) => c[0] === cur.color) || COLORS[0])[2];
-    textEl.style.width = WIDTHS[cur.width] || WIDTHS.medium;
-    textEl.style.textAlign = cur.align;
-    const m = MIRROR[cur.mirror] || MIRROR.off;
+    textEl.style.fontFamily = FONTS[s.font] || FONTS.sans;
+    textEl.style.fontSize = s.size + "px";
+    textEl.style.color = (COLORS.find((c) => c[0] === s.color) || COLORS[0])[2];
+    textEl.style.width = WIDTHS[s.width] || WIDTHS.medium;
+    textEl.style.textAlign = s.align;
+    const m = MIRROR[s.mirror] || MIRROR.off;
     flip.style.transform = `scale(${m.sx}, ${m.sy})`;
     measure();
     if (keepPlace) pos = clampPos(frac * textH);
@@ -1074,8 +871,8 @@ That is it for today. If this helped, let me know what you want me to cover next
 
   function measure() {
     const h = stage.clientHeight || window.innerHeight;
-    lineH = v().size * 1.32;
-    lineY = h * (LINES[v().line] || LINES.upper);
+    lineH = s.size * 1.32;
+    lineY = h * (LINES[s.line] || LINES.upper);
     // The bottom padding exists only so the last line can reach the reading line.
     const pad = parseFloat(getComputedStyle(textEl).paddingBottom) || 0;
     textH = Math.max(1, textEl.offsetHeight - pad);
@@ -1143,7 +940,7 @@ That is it for today. If this helped, let me know what you want me to cover next
     if (counting) { stopCountdown(); return; }
     if (playing) { setPlaying(false); return; }
     if (endPos() <= 0) return;
-    if (v().countdown && pos < 1) startCountdown();
+    if (s.countdown && pos < 1) startCountdown();
     else setPlaying(true);
   }
 
@@ -1159,6 +956,21 @@ That is it for today. If this helped, let me know what you want me to cover next
 
   function nudge(lines) {
     pos = clampPos(pos + lines * lineH);
+    paint();
+  }
+  // The web page holds one script, so a "page" here is a paragraph. Next goes
+  // to the next paragraph. Previous goes to the start of this paragraph, or to
+  // the one before when you are already at its start.
+  function changePage(dir) {
+    const ps = Array.from(textEl.children);
+    if (!ps.length) return;
+    const starts = ps.map((p) => clampPos(p.offsetTop - ps[0].offsetTop));
+    const slack = lineH / 2;
+    let to = dir > 0
+      ? starts.find((y) => y > pos + slack)
+      : starts.slice().reverse().find((y) => y < pos - slack);
+    if (to === undefined) to = dir > 0 ? endPos() : 0;
+    pos = to;
     paint();
   }
   function changeSpeed(d) {
@@ -1186,9 +998,8 @@ That is it for today. If this helped, let me know what you want me to cover next
   });
 
   function loadText(keepPlace) {
-    textEl.innerHTML = renderScript(v().script);
+    textEl.innerHTML = renderScript(s.script);
     applyStyle(keepPlace);
-    renderLink();
   }
 
   function openStage() {
@@ -1201,6 +1012,7 @@ That is it for today. If this helped, let me know what you want me to cover next
     // Fonts can finish loading after the first measure, which changes line wraps.
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (!stage.hidden) applyStyle(true); });
     $("playBtn").focus({ preventScroll: true });
+    watchPads();
   }
   function closeStage() {
     stopCountdown();
@@ -1209,7 +1021,6 @@ That is it for today. If this helped, let me know what you want me to cover next
     setupEl.hidden = false;
     unlockScreen();
     exitFullscreen();
-    renderLink();
   }
 
   const canFull = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
@@ -1232,7 +1043,6 @@ That is it for today. If this helped, let me know what you want me to cover next
   }
 
   $("start").addEventListener("click", openStage);
-  $("openDisplay").addEventListener("click", openStage);
   $("exitBtn").addEventListener("click", closeStage);
   $("restartBtn").addEventListener("click", () => { stopCountdown(); setPlaying(false); pos = 0; paint(); });
   $("playBtn").addEventListener("click", togglePlay);
@@ -1259,7 +1069,7 @@ That is it for today. If this helped, let me know what you want me to cover next
     if (drag.moved < 8) return;
     // Under a vertical flip the text moves opposite to the screen, so the
     // drag direction is flipped too and the words still follow the finger.
-    const sy = (MIRROR[v().mirror] || MIRROR.off).sy;
+    const sy = (MIRROR[s.mirror] || MIRROR.off).sy;
     pos = clampPos(drag.start - dy * sy);
     paint();
     showHud();
@@ -1290,37 +1100,76 @@ That is it for today. If this helped, let me know what you want me to cover next
     const k = e.key;
     let handled = true;
 
-    if (stage.hidden) {
-      // Remote control: the same keys steer the display while you're not typing.
-      if (mode !== "controller" || isTyping(e) || e.target.closest && e.target.closest("button, input")) return;
-      if (k === " " || k === "MediaPlayPause") sendCmd({ op: "toggle" });
-      else if (k === "ArrowRight" || k === "PageDown") sendCmd({ op: "nudge", n: 1 });
-      else if (k === "ArrowLeft" || k === "PageUp") sendCmd({ op: "nudge", n: -1 });
-      else if (k === "ArrowUp") changeSpeed(0.5);
-      else if (k === "ArrowDown") changeSpeed(-0.5);
-      else if (k === "Home") sendCmd({ op: "restart" });
-      else handled = false;
-      if (handled) e.preventDefault();
-      return;
-    }
+    if (stage.hidden) return;
 
-    const solo = mode !== "display";
+    // Page-turners send the Page or arrow keys. Remotes in key mode send the
+    // arrows and Enter; in music mode they send the media keys.
     if (k === " " || k === "Enter" || k === "MediaPlayPause") {
       if (k === "Enter" && e.target.closest && e.target.closest("button") && e.target !== $("playBtn")) handled = false;
       else togglePlay();
     }
-    else if (k === "ArrowRight" || k === "PageDown") nudge(1);
-    else if (k === "ArrowLeft" || k === "PageUp") nudge(-1);
+    else if (k === "ArrowRight" || k === "PageDown" || k === "MediaTrackNext") nudge(1);
+    else if (k === "ArrowLeft" || k === "PageUp" || k === "MediaTrackPrevious") nudge(-1);
+    else if (k === "ArrowUp" || k === "AudioVolumeUp") changeSpeed(0.5);
+    else if (k === "ArrowDown" || k === "AudioVolumeDown") changeSpeed(-0.5);
+    else if (k === "]") changePage(1);
+    else if (k === "[") changePage(-1);
     else if (k === "Home") { pos = 0; paint(); }
     else if (k === "Escape") closeStage();
-    else if (solo && k === "ArrowUp") changeSpeed(0.5);
-    else if (solo && k === "ArrowDown") changeSpeed(-0.5);
-    else if (solo && (k === "m" || k === "M")) cycleMirror();
-    else if (solo && (k === "+" || k === "=")) changeSize(4);
-    else if (solo && (k === "-" || k === "_")) changeSize(-4);
+    else if (k === "m" || k === "M") cycleMirror();
+    else if (k === "+" || k === "=") changeSize(4);
+    else if (k === "-" || k === "_") changeSize(-4);
     else handled = false;
     if (handled) { e.preventDefault(); showHud(); }
   });
+
+  /* ---------- Game remotes ----------
+     Same map as the desktop app. A remote in game mode shows up as a gamepad
+     (standard mapping): A or START pauses, B goes back a line, X and Y change
+     page, the stick or D-pad moves a line (left and right) and changes speed
+     (up and down). The page polls only while the prompter is open. */
+  const PAD_BUTTONS = { 0: "toggle", 9: "toggle", 1: "back", 2: "prevPage", 3: "nextPage", 12: "faster", 13: "slower", 14: "back", 15: "forward" };
+  function remote(cmd) {
+    if (cmd === "toggle") togglePlay();
+    else if (cmd === "forward") nudge(1);
+    else if (cmd === "back") nudge(-1);
+    else if (cmd === "faster") changeSpeed(0.5);
+    else if (cmd === "slower") changeSpeed(-0.5);
+    else if (cmd === "nextPage") changePage(1);
+    else if (cmd === "prevPage") changePage(-1);
+    showHud();
+  }
+  const pads = new Map();
+  let padRaf = 0;
+  function pollPads(now) {
+    padRaf = 0;
+    if (stage.hidden) return;
+    for (const pad of navigator.getGamepads()) {
+      if (!pad || !pad.connected) continue;
+      const st = pads.get(pad.index) || { buttons: [], axis: null, axisAt: 0 };
+      pad.buttons.forEach((b, i) => {
+        const down = !!(b && b.pressed);
+        if (down && !st.buttons[i] && PAD_BUTTONS[i]) remote(PAD_BUTTONS[i]);
+        st.buttons[i] = down;
+      });
+      const [x = 0, y = 0] = pad.axes;
+      let dir = null;
+      if (Math.abs(x) > 0.6 && Math.abs(x) >= Math.abs(y)) dir = x > 0 ? "forward" : "back";
+      else if (Math.abs(y) > 0.6) dir = y < 0 ? "faster" : "slower";
+      // Fire on push, then repeat while held.
+      if (dir && (dir !== st.axis || now - st.axisAt > 350)) {
+        remote(dir);
+        st.axisAt = now;
+      }
+      st.axis = dir;
+      pads.set(pad.index, st);
+    }
+    padRaf = requestAnimationFrame(pollPads);
+  }
+  function watchPads() {
+    if (!padRaf && !stage.hidden && navigator.getGamepads) padRaf = requestAnimationFrame(pollPads);
+  }
+  window.addEventListener("gamepadconnected", watchPads);
 
   let resizeRaf = 0;
   window.addEventListener("resize", () => {
@@ -1329,265 +1178,9 @@ That is it for today. If this helped, let me know what you want me to cover next
     resizeRaf = requestAnimationFrame(() => applyStyle(true));
   });
 
-  /* ---------- Live link between devices ----------
-     The Remote control sends absolute settings, the script (in pieces, since
-     each message holds about 4 KB) and one-off commands. The Display runs the
-     scroll clock itself and reports where it is through its presence, so the
-     Remote control can show progress and the line on the reading marker. */
-  let room = null, roomResolved = false;
-  const CHUNK = 900;
-  let settingsTimer = 0, scriptTimer = 0, sendAllTimer = 0;
-  let sendingScript = false, scriptQueued = false, lastScriptAt = 0;
-  const asm = { id: null, n: 0, parts: [], got: 0 };
-
-  const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
-  function hash(str) {
-    let h = 5381;
-    for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
-    return (h >>> 0).toString(36) + "-" + str.length.toString(36);
-  }
-  const linked = () => !!(room && room.connected());
-  const others = () => (room ? room.peers().filter((p) => !p.sameTab) : []);
-  const displays = () => others().filter((p) => p.presence && p.presence.role === "display");
-  const controllers = () => others().filter((p) => p.presence && p.presence.role === "controller");
-
-  function settingsPayload() {
-    const { script, ...rest } = s;
-    return rest;
-  }
-  function emit(topic, data) {
-    if (!linked()) return Promise.resolve();
-    return room.emit(topic, data).catch(() => {});
-  }
-  function scheduleSettings() {
-    clearTimeout(settingsTimer);
-    settingsTimer = setTimeout(() => emit("settings", settingsPayload()), 80);
-  }
-  function scheduleScript(ms) {
-    clearTimeout(scriptTimer);
-    scriptTimer = setTimeout(sendScript, ms);
-  }
-  function scheduleSendAll(ms) {
-    clearTimeout(sendAllTimer);
-    sendAllTimer = setTimeout(() => {
-      if (mode !== "controller") return;
-      emit("settings", settingsPayload());
-      sendScript();
-    }, ms);
-  }
-  async function sendScript() {
-    if (mode !== "controller" || !linked()) return;
-    if (sendingScript) { scriptQueued = true; return; }
-    sendingScript = true;
-    const text = s.script;
-    const id = hash(text);
-    const parts = [];
-    for (let i = 0; i < text.length; i += CHUNK) parts.push(text.slice(i, i + CHUNK));
-    if (!parts.length) parts.push("");
-    for (let i = 0; i < parts.length; i++) {
-      await emit("script", { id, i, n: parts.length, t: parts[i] });
-      if (parts.length > 1) await sleep(70);
-    }
-    lastScriptAt = Date.now();
-    sendingScript = false;
-    if (scriptQueued) { scriptQueued = false; sendScript(); }
-  }
-  function sendCmd(cmd) {
-    emit("cmd", cmd);
-  }
-
-  // Display side: everything that arrives is checked before it is used.
-  function cleanSettings(d) {
-    const out = {};
-    if (!d || typeof d !== "object") return out;
-    for (const k of Object.keys(OPTIONS)) if (OPTIONS[k].some((o) => o[0] === d[k])) out[k] = d[k];
-    if (COLORS.some((c) => c[0] === d.color)) out.color = d.color;
-    if (typeof d.size === "number" && d.size >= 28 && d.size <= 140) out.size = d.size;
-    if (typeof d.speed === "number" && d.speed >= 1 && d.speed <= 15) out.speed = d.speed;
-    if (typeof d.countdown === "boolean") out.countdown = d.countdown;
-    return out;
-  }
-  function onSettings(d) {
-    Object.assign(r, cleanSettings(d));
-    if (!stage.hidden) applyStyle(true);
-  }
-  function onScriptChunk(d) {
-    if (!d || typeof d.id !== "string" || d.id.length > 40 || typeof d.t !== "string") return;
-    if (!Number.isInteger(d.n) || !Number.isInteger(d.i) || d.n < 1 || d.n > 400 || d.i < 0 || d.i >= d.n) return;
-    if (d.id === r.scriptId) return;
-    if (asm.id !== d.id || asm.n !== d.n) { asm.id = d.id; asm.n = d.n; asm.parts = new Array(d.n); asm.got = 0; }
-    if (asm.parts[d.i] === undefined) { asm.parts[d.i] = d.t; asm.got += 1; }
-    if (asm.got === asm.n) {
-      r.script = asm.parts.join("");
-      r.scriptId = asm.id;
-      asm.id = null;
-      if (!stage.hidden) loadText(true);
-    }
-  }
-  function onCmd(d) {
-    if (!d || typeof d.op !== "string" || stage.hidden) return;
-    if (d.op === "toggle") togglePlay();
-    else if (d.op === "restart") { stopCountdown(); setPlaying(false); pos = 0; paint(); }
-    else if (d.op === "nudge" && Number.isFinite(d.n)) nudge(Math.max(-20, Math.min(20, d.n)));
-    else if (d.op === "seek" && Number.isFinite(d.p)) { pos = clampPos(Math.max(0, Math.min(1, d.p)) * endPos()); paint(); }
-    showHud();
-  }
-
-  // The words sitting on the reading marker, for the Remote control's panel.
-  function currentLine() {
-    const y = pos + lineH / 2;
-    for (const p of textEl.children) {
-      const top = p.offsetTop, h = p.offsetHeight;
-      if (y < top + h) {
-        const txt = p.textContent.replace(/\s+/g, " ");
-        if (y < top || h <= 0) return txt.slice(0, 90);
-        const i = Math.floor(((y - top) / h) * txt.length);
-        const start = txt.lastIndexOf(" ", Math.max(0, i - 20)) + 1;
-        return txt.slice(start, start + 90);
-      }
-    }
-    return "";
-  }
-
-  let lastPresence = "";
-  function reportPresence() {
-    if (!linked()) return;
-    let patch = { role: mode };
-    if (mode === "display") {
-      const open = !stage.hidden;
-      patch = {
-        role: "display",
-        open,
-        ready: !!r.script,
-        sid: r.scriptId,
-        p: open && endPos() ? Math.round((pos / endPos()) * 1000) / 1000 : 0,
-        playing: playing || counting,
-        left: open ? Math.round((endPos() - pos) / pxPerSec()) : 0,
-        line: open ? currentLine() : "",
-      };
-    }
-    const json = JSON.stringify(patch);
-    if (json === lastPresence) return;
-    lastPresence = json;
-    room.presence(patch).catch(() => {});
-  }
-
-  function announce() {
-    lastPresence = "";
-    reportPresence();
-    if (!linked()) return;
-    if (mode === "display" && !r.script) emit("need", { have: r.scriptId });
-    if (mode === "controller") scheduleSendAll(200);
-  }
-
-  function renderLink() {
-    // Remote control panel
-    if (mode === "controller") {
-      const dot = $("linkDot"), txt = $("linkText");
-      const ds = displays();
-      let state = "wait", label = "Connecting…";
-      if (roomResolved && !room) { state = ""; label = "The live link isn't available here. Open this page on claude.ai while signed in."; }
-      else if (linked() && !ds.length) { state = "wait"; label = "No display yet. On the iPad, open this page and choose Display."; }
-      else if (linked()) {
-        state = "ok";
-        const open = ds.filter((d) => d.presence.open);
-        label = ds.length > 1 ? `${ds.length} displays connected` : "iPad display connected";
-        if (!open.length) label += ", prompter closed";
-      }
-      dot.className = "dot " + state;
-      txt.textContent = label;
-      const d = ds.find((x) => x.presence.open) || ds[0];
-      const ready = !!(d && d.presence.open && d.presence.ready);
-      for (const id of ["tRestart", "tBack", "tPlay", "tFwd"]) $(id).disabled = !ready;
-      $("liveMeter").setAttribute("aria-disabled", ready ? "false" : "true");
-      const p = d && typeof d.presence.p === "number" ? Math.max(0, Math.min(1, d.presence.p)) : 0;
-      $("liveBar").style.width = (p * 100).toFixed(1) + "%";
-      $("liveMeter").setAttribute("aria-valuenow", String(Math.round(p * 100)));
-      $("liveLeft").textContent = d && typeof d.presence.left === "number" ? `${fmt(d.presence.left)} left` : "–";
-      const on = !!(d && d.presence.playing);
-      $("tPlayIcon").toggleAttribute("hidden", on);
-      $("tPauseIcon").toggleAttribute("hidden", !on);
-      $("tPlay").setAttribute("aria-label", on ? "Pause" : "Play");
-      const line = $("liveLine");
-      let lineText = "The line on the display's reading marker shows here.";
-      if (d && d.presence.open && !d.presence.ready) lineText = "Sending the script…";
-      else if (d && d.presence.open && typeof d.presence.line === "string" && d.presence.line) lineText = d.presence.line;
-      else if (d && !d.presence.open) lineText = "On the iPad, tap Open display.";
-      line.textContent = lineText;
-      line.classList.toggle("empty", !(d && d.presence.line));
-    }
-
-    // Display stage
-    if (mode === "display") {
-      const hasRemote = controllers().length > 0;
-      $("hudDot").className = "dot" + (hasRemote ? " ok" : "");
-      $("hudLink").textContent = hasRemote ? "Linked to remote control" : "Remote control not connected";
-      const waiting = $("waiting");
-      waiting.hidden = stage.hidden || !!r.script;
-      if (!waiting.hidden) {
-        if (roomResolved && !room) {
-          $("waitTitle").textContent = "The live link isn't available here";
-          $("waitText").textContent = "Open this page on claude.ai while signed in, or switch this device to On its own.";
-        } else if (!linked()) {
-          $("waitTitle").textContent = "Connecting…";
-          $("waitText").textContent = "Looking for your remote control.";
-        } else {
-          $("waitTitle").textContent = "Waiting for your computer";
-          $("waitText").textContent = "On the PC, open this same page and choose Remote control. The script will appear here.";
-        }
-      }
-    }
-  }
-
-  $("tPlay").addEventListener("click", () => sendCmd({ op: "toggle" }));
-  $("tRestart").addEventListener("click", () => sendCmd({ op: "restart" }));
-  $("tBack").addEventListener("click", () => sendCmd({ op: "nudge", n: -1 }));
-  $("tFwd").addEventListener("click", () => sendCmd({ op: "nudge", n: 1 }));
-  $("liveMeter").addEventListener("click", (e) => {
-    if ($("liveMeter").getAttribute("aria-disabled") === "true") return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    sendCmd({ op: "seek", p: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) });
-  });
-
-  setInterval(() => {
-    if (mode === "display") reportPresence();
-  }, 250);
-  setInterval(() => {
-    if (!linked()) return;
-    if (mode === "display" && !r.script) emit("need", { have: r.scriptId });
-    if (mode === "controller") {
-      // Messages can drop, so resend settings now and then, and resend the
-      // script when a display reports a different one.
-      emit("settings", settingsPayload());
-      const id = hash(s.script);
-      const stale = displays().some((d) => d.presence.sid !== id);
-      if (stale && !sendingScript && Date.now() - lastScriptAt > 3000) sendScript();
-    }
-  }, 4000);
-
-  const onRoomError = () => renderLink();
-  const roomPromise = window.claude && typeof window.claude.use === "function"
-    ? window.claude.use("room").catch(() => null)
-    : Promise.resolve(null);
-  roomPromise.then((rm) => {
-    room = rm;
-    roomResolved = true;
-    if (!rm) { renderLink(); return; }
-    rm.onConnection((c) => { if (c) announce(); renderLink(); }, onRoomError);
-    rm.onPeers((change) => {
-      if (mode === "controller" && change.joined.some((p) => !p.sameTab)) scheduleSendAll(400);
-      renderLink();
-    }, onRoomError);
-    rm.on("need", (m) => { if (!m.sameTab && mode === "controller") scheduleSendAll(150); }, onRoomError);
-    rm.on("settings", (m) => { if (!m.sameTab && mode === "display") onSettings(m.data); }, onRoomError);
-    rm.on("script", (m) => { if (!m.sameTab && mode === "display") onScriptChunk(m.data); }, onRoomError);
-    rm.on("cmd", (m) => { if (!m.sameTab && mode === "display") onCmd(m.data); }, onRoomError);
-  });
-
   scriptEl.value = s.script;
-  document.querySelector(".mode-row").hidden = !CAN_LINK;
-  renderMode();
-  if (mode === "display") openStage();
+  renderStats();
+  syncControls();
 })();
 </script>
 </body>

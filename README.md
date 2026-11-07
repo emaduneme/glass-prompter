@@ -170,7 +170,7 @@ Your script and settings are saved on the iPad, so they're still there next time
 
 To steer the prompter from your computer while an iPad shows it, use the **desktop app**. Turn on **Remote** in its settings and scan the QR code on the iPad. The iPad shows the live prompter, normal or mirrored for glass, and follows the computer as you read. With **Director Mode**, someone else can write and start the script from their own browser.
 
-An earlier version of this remote control ran as a Claude artifact on claude.ai. That version is retired. This web page still works on its own, and a Bluetooth keyboard or page-turner can steer it (see the iPad setup above).
+This web page works on its own. A Bluetooth keyboard, page-turner or game remote can steer it (see the iPad setup above).
 
 ## Host it yourself
 
@@ -192,9 +192,6 @@ To publish your own copy on GitHub Pages, fork this repository, then go to **Set
 index.html          The web app: markup, styles and script in one file
 media/              Icons, screenshots and the promo video
 desktop/            The desktop app (Electron), with its own README
-tools/
-├── linked-test.html  Loads the web app with a stand-in room, for testing its linked modes
-└── mock-room.js      BroadcastChannel stand-in for the room service
 ```
 
 The page loads its fonts from Google Fonts. Everything else is in the file, with no libraries.
